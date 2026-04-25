@@ -1,0 +1,1 @@
+I am using Clean Architecture and SOLID principles in my Flutter project. The project should have 'Presentation', 'Domain' and 'Data' layers. I use state management (e.g. Block or Provider). Don't forget to write tests for each new feature.
