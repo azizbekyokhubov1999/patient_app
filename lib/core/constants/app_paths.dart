@@ -15,6 +15,7 @@ abstract final class AppPaths {
 
   static const String home = '/home';
   static const String explore = '/explore';
-  static const String appointments = '/appointments';
+  static const String booking = '/booking';
+  static const String chat = '/chat';
   static const String profile = '/profile';
 }
