@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/auth/presentation/pages/complete_profile_page.dart';
 import '../../features/auth/presentation/pages/create_account_page.dart';
+import '../../features/auth/presentation/pages/enter_location_page.dart';
 import '../../features/auth/presentation/pages/new_password_page.dart';
+import '../../features/auth/presentation/pages/notification_access_page.dart';
 import '../../features/auth/presentation/pages/onboarding_screen.dart';
 import '../../features/auth/presentation/pages/signin_page.dart';
 import '../../features/auth/presentation/pages/splash_screen.dart';
-import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/auth/presentation/pages/verify_code_page.dart';
 import '../../features/auth/presentation/pages/welcome_screen.dart';
+import '../../features/auth/presentation/pages/your_location_page.dart';
 import '../../features/booking/presentation/pages/appointments_page.dart';
 import '../../features/home/presentation/pages/explore_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
@@ -35,7 +36,7 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.signUp,
-        builder: (context, state) => const SignUpPage(),
+        builder: (context, state) => const CreateAccountPage(),
       ),
       GoRoute(
         path: AppPaths.signIn,
@@ -58,8 +59,20 @@ abstract final class AppRouter {
         builder: (context, state) => const CompleteProfilePage(),
       ),
       GoRoute(
+        path: AppPaths.yourLocation,
+        builder: (context, state) => const YourLocationPage(),
+      ),
+      GoRoute(
+        path: AppPaths.enterLocation,
+        builder: (context, state) => const EnterLocationPage(),
+      ),
+      GoRoute(
+        path: AppPaths.notificationAccess,
+        builder: (context, state) => const NotificationAccessPage(),
+      ),
+      GoRoute(
         path: AppPaths.auth,
-        builder: (context, state) => const AuthPage(),
+        builder: (context, state) => const SignInPage(),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -89,10 +102,7 @@ abstract final class AppRouter {
 }
 
 class MainNavigationScaffold extends StatelessWidget {
-  const MainNavigationScaffold({
-    required this.child,
-    super.key,
-  });
+  const MainNavigationScaffold({required this.child, super.key});
 
   final Widget child;
 

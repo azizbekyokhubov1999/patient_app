@@ -9,6 +9,9 @@ abstract final class AppPaths {
   static const String verifyCode = '/verify-code';
   static const String newPassword = '/new-password';
   static const String completeProfile = '/complete-profile';
+  static const String yourLocation = '/your-location';
+  static const String enterLocation = '/enter-location';
+  static const String notificationAccess = '/notification-access';
 
   static const String home = '/home';
   static const String explore = '/explore';

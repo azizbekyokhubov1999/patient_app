@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../bloc/auth_cubit.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -34,7 +36,9 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   String? _passwordValidator(String? value) {
-    if ((value ?? '').length < 6) return 'Password must be at least 6 characters';
+    if ((value ?? '').length < 6) {
+      return 'Password must be at least 6 characters';
+    }
     return null;
   }
 
@@ -44,77 +48,102 @@ class _SignInPageState extends State<SignInPage> {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final topHeight = screenHeight * 0.43;
 
-    return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Column(
-                children: [
-                  SizedBox(height: topHeight),
-                  Expanded(child: Container(color: AppColors.background)),
-                ],
-              ),
+    return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          current.action == AuthAction.signIn && current is! AuthLoading,
+      listener: (context, state) {
+        if (state is AuthSuccess && state.action == AuthAction.signIn) {
+          context.go(AppPaths.home);
+        } else if (state is AuthFailure && state.action == AuthAction.signIn) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        }
+      },
+      builder: (context, state) {
+        final isSubmitting =
+            state is AuthLoading && state.action == AuthAction.signIn;
+        return Scaffold(
+          backgroundColor: AppColors.primary,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      SizedBox(height: topHeight),
+                      Expanded(child: Container(color: AppColors.background)),
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    MediaQuery.viewInsetsOf(context).bottom + 16,
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(height: (topHeight * 0.12).clamp(18, 38)),
+                      SvgPicture.asset(
+                        'assets/images/logo.svg',
+                        height: 70,
+                        fit: BoxFit.contain,
+                        width: 100,
+                        colorFilter: const ColorFilter.mode(
+                          AppColors.white,
+                          BlendMode.srcIn,
+                        ),
+                        semanticsLabel: 'Logo',
+                      ),
+                      SizedBox(height: (topHeight * 0.11).clamp(12, 24)),
+                      Text(
+                        'Let\'s get you Login!',
+                        style: textTheme.headlineLarge?.copyWith(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hi! Welcome back, you\'ve been missed',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: AppColors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                      SizedBox(height: (topHeight * 0.09).clamp(10, 20)),
+                      _SignInCard(
+                        formKey: _formKey,
+                        emailController: _emailController,
+                        passwordController: _passwordController,
+                        obscurePassword: _obscurePassword,
+                        emailValidator: _emailValidator,
+                        passwordValidator: _passwordValidator,
+                        isSubmitting: isSubmitting,
+                        onTogglePassword: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                        onForgotPassword: () =>
+                            context.push(AppPaths.newPassword),
+                        onSignIn: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            context.read<AuthCubit>().signIn(
+                              email: _emailController.text,
+                              password: _passwordController.text,
+                            );
+                          }
+                        },
+                        onSignUp: () => context.push(AppPaths.createAccount),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                MediaQuery.viewInsetsOf(context).bottom + 16,
-              ),
-              child: Column(
-                children: [
-                  SizedBox(height: (topHeight * 0.12).clamp(18, 38)),
-                  SvgPicture.asset(
-                    'assets/images/logo.svg',
-                    height: 70,
-                    fit: BoxFit.contain,
-                    width: 100,
-                    colorFilter: const ColorFilter.mode(AppColors.white, BlendMode.srcIn),
-                    semanticsLabel: 'Logo',
-                  ),
-                  SizedBox(height: (topHeight * 0.11).clamp(12, 24)),
-                  Text(
-                    'Let\'s get you Login!',
-                    style: textTheme.headlineLarge?.copyWith(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Hi! Welcome back, you\'ve been missed',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: AppColors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  SizedBox(height: (topHeight * 0.09).clamp(10, 20)),
-                  _SignInCard(
-                    formKey: _formKey,
-                    emailController: _emailController,
-                    passwordController: _passwordController,
-                    obscurePassword: _obscurePassword,
-                    emailValidator: _emailValidator,
-                    passwordValidator: _passwordValidator,
-                    onTogglePassword: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                    onForgotPassword: () => context.go(AppPaths.newPassword),
-                    onSignIn: () {
-                      if (_formKey.currentState?.validate() ?? false) {
-                        context.go(AppPaths.home);
-                      }
-                    },
-                    onSignUp: () => context.go(AppPaths.createAccount),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -127,6 +156,7 @@ class _SignInCard extends StatelessWidget {
     required this.obscurePassword,
     required this.emailValidator,
     required this.passwordValidator,
+    required this.isSubmitting,
     required this.onTogglePassword,
     required this.onForgotPassword,
     required this.onSignIn,
@@ -139,6 +169,7 @@ class _SignInCard extends StatelessWidget {
   final bool obscurePassword;
   final String? Function(String?) emailValidator;
   final String? Function(String?) passwordValidator;
+  final bool isSubmitting;
   final VoidCallback onTogglePassword;
   final VoidCallback onForgotPassword;
   final VoidCallback onSignIn;
@@ -185,35 +216,34 @@ class _SignInCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-             Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _SocialCircleButton(child:     SvgPicture.asset(
-                            'assets/images/apple-black-logo.svg',
-                            height: 32,
-                            fit: BoxFit.contain,
-                            width: 32,
-                          
-                          ),),
-                SizedBox(width: 14),
                 _SocialCircleButton(
                   child: SvgPicture.asset(
-                            'assets/images/google-icon.svg',
-                            height: 32,
-                            fit: BoxFit.contain,
-                            width: 32,
-                          
-                            ),
+                    'assets/images/apple-black-logo.svg',
+                    height: 32,
+                    fit: BoxFit.contain,
+                    width: 32,
+                  ),
                 ),
                 SizedBox(width: 14),
                 _SocialCircleButton(
                   child: SvgPicture.asset(
-                            'assets/images/facebook-2-logo.svg',
-                            height: 32,
-                            fit: BoxFit.contain,
-                            width: 32,
-                          
-                            ),
+                    'assets/images/google-icon.svg',
+                    height: 32,
+                    fit: BoxFit.contain,
+                    width: 32,
+                  ),
+                ),
+                SizedBox(width: 14),
+                _SocialCircleButton(
+                  child: SvgPicture.asset(
+                    'assets/images/facebook-2-logo.svg',
+                    height: 32,
+                    fit: BoxFit.contain,
+                    width: 32,
+                  ),
                 ),
               ],
             ),
@@ -225,14 +255,21 @@ class _SignInCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Text(
                     'Or sign in with',
-                    style: textTheme.bodyMedium?.copyWith(color: AppColors.secondaryText),
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText,
+                    ),
                   ),
                 ),
                 const Expanded(child: Divider(color: AppColors.stroke)),
               ],
             ),
             const SizedBox(height: 12),
-            Text('Email', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryText)),
+            Text(
+              'Email',
+              style: textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 6),
             TextFormField(
               controller: emailController,
@@ -242,7 +279,12 @@ class _SignInCard extends StatelessWidget {
               validator: emailValidator,
             ),
             const SizedBox(height: 10),
-            Text('Password', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryText)),
+            Text(
+              'Password',
+              style: textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 6),
             TextFormField(
               controller: passwordController,
@@ -253,7 +295,9 @@ class _SignInCard extends StatelessWidget {
                 suffixIcon: IconButton(
                   onPressed: onTogglePassword,
                   icon: Icon(
-                    obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                     color: AppColors.primaryText,
                   ),
                 ),
@@ -280,19 +324,32 @@ class _SignInCard extends StatelessWidget {
             SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: onSignIn,
+                onPressed: isSubmitting ? null : onSignIn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
-                child: const Text('Sign In'),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.white,
+                        ),
+                      )
+                    : const Text('Sign In'),
               ),
             ),
             const SizedBox(height: 10),
             Center(
               child: RichText(
                 text: TextSpan(
-                  style: textTheme.bodyLarge?.copyWith(color: AppColors.primaryText),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: AppColors.primaryText,
+                  ),
                   children: [
                     const TextSpan(text: 'Don\'t have an account? '),
                     WidgetSpan(

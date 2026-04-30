@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../bloc/auth_cubit.dart';
 
 class CreateAccountPage extends StatefulWidget {
   const CreateAccountPage({super.key});
@@ -31,79 +33,114 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final topHeight = constraints.maxHeight * 0.42;
+    return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          current.action == AuthAction.createAccount && current is! AuthLoading,
+      listener: (context, state) {
+        if (state is AuthSuccess && state.action == AuthAction.createAccount) {
+          context.push(AppPaths.verifyCode);
+        } else if (state is AuthFailure &&
+            state.action == AuthAction.createAccount) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        }
+      },
+      builder: (context, state) {
+        final isSubmitting =
+            state is AuthLoading && state.action == AuthAction.createAccount;
+        return Scaffold(
+          backgroundColor: AppColors.primary,
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final topHeight = constraints.maxHeight * 0.42;
 
-            return Stack(
-              children: [
-                Column(
+                return Stack(
                   children: [
-                    SizedBox(height: topHeight),
-                    Expanded(child: Container(color: AppColors.background)),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Column(
-                        children: [
-                          SizedBox(height: (topHeight * 0.2).clamp(20, 46)),
-                          Text(
-                            'Create Account',
-                            style: textTheme.headlineLarge?.copyWith(
-                              color: AppColors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    Column(
+                      children: [
+                        SizedBox(height: topHeight),
+                        Expanded(child: Container(color: AppColors.background)),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Fill your information below or register\nwith your social account.',
-                            textAlign: TextAlign.center,
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: AppColors.white.withValues(alpha: 0.9),
-                            ),
+                          child: Column(
+                            children: [
+                              SizedBox(height: (topHeight * 0.2).clamp(20, 46)),
+                              Text(
+                                'Create Account',
+                                style: textTheme.headlineLarge?.copyWith(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Fill your information below or register\nwith your social account.',
+                                textAlign: TextAlign.center,
+                                style: textTheme.bodyLarge?.copyWith(
+                                  color: AppColors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                              SizedBox(
+                                height: (topHeight * 0.18).clamp(14, 24),
+                              ),
+                              _CreateAccountCard(
+                                formKey: _formKey,
+                                nameController: _nameController,
+                                emailController: _emailController,
+                                passwordController: _passwordController,
+                                acceptedTerms: _acceptedTerms,
+                                obscurePassword: _obscurePassword,
+                                isSubmitting: isSubmitting,
+                                onTogglePassword: () {
+                                  setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  );
+                                },
+                                onTermsChanged: (value) => setState(
+                                  () => _acceptedTerms = value ?? false,
+                                ),
+                                onSignUp: () {
+                                  if (!(_formKey.currentState?.validate() ??
+                                      false)) {
+                                    return;
+                                  }
+                                  context.read<AuthCubit>().createAccount(
+                                    name: _nameController.text,
+                                    email: _emailController.text,
+                                    password: _passwordController.text,
+                                    acceptedTerms: _acceptedTerms,
+                                  );
+                                },
+                                onSignIn: () {
+                                  if (context.canPop()) {
+                                    context.pop();
+                                  } else {
+                                    context.go(AppPaths.signIn);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                           ),
-                          SizedBox(height: (topHeight * 0.18).clamp(14, 24)),
-                          _CreateAccountCard(
-                            formKey: _formKey,
-                            nameController: _nameController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            acceptedTerms: _acceptedTerms,
-                            obscurePassword: _obscurePassword,
-                            onTogglePassword: () {
-                              setState(() => _obscurePassword = !_obscurePassword);
-                            },
-                            onTermsChanged: (value) => setState(() => _acceptedTerms = value ?? false),
-                            onSignUp: () {
-                              if (!(_formKey.currentState?.validate() ?? false)) return;
-                              if (!_acceptedTerms) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Please accept Terms & Condition')),
-                                );
-                                return;
-                              }
-                              context.go(AppPaths.verifyCode);
-                            },
-                            onSignIn: () => context.go(AppPaths.signIn),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -116,6 +153,7 @@ class _CreateAccountCard extends StatelessWidget {
     required this.passwordController,
     required this.acceptedTerms,
     required this.obscurePassword,
+    required this.isSubmitting,
     required this.onTogglePassword,
     required this.onTermsChanged,
     required this.onSignUp,
@@ -128,6 +166,7 @@ class _CreateAccountCard extends StatelessWidget {
   final TextEditingController passwordController;
   final bool acceptedTerms;
   final bool obscurePassword;
+  final bool isSubmitting;
   final VoidCallback onTogglePassword;
   final ValueChanged<bool?> onTermsChanged;
   final VoidCallback onSignUp;
@@ -178,7 +217,9 @@ class _CreateAccountCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _SocialCircleButton(
-                  child: SvgPictureAsset(path: 'assets/images/apple-black-logo.svg'),
+                  child: SvgPictureAsset(
+                    path: 'assets/images/apple-black-logo.svg',
+                  ),
                 ),
                 SizedBox(width: 14),
                 _SocialCircleButton(
@@ -186,7 +227,9 @@ class _CreateAccountCard extends StatelessWidget {
                 ),
                 SizedBox(width: 14),
                 _SocialCircleButton(
-                  child: SvgPictureAsset(path: 'assets/images/facebook-2-logo.svg'),
+                  child: SvgPictureAsset(
+                    path: 'assets/images/facebook-2-logo.svg',
+                  ),
                 ),
               ],
             ),
@@ -198,23 +241,36 @@ class _CreateAccountCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Text(
                     'Or sign up with',
-                    style: textTheme.bodyMedium?.copyWith(color: AppColors.secondaryText),
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText,
+                    ),
                   ),
                 ),
                 const Expanded(child: Divider(color: AppColors.stroke)),
               ],
             ),
             const SizedBox(height: 12),
-            Text('Name', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryText)),
+            Text(
+              'Name',
+              style: textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 6),
             TextFormField(
               controller: nameController,
               style: const TextStyle(color: AppColors.primaryText),
               decoration: fieldDecoration(hint: 'John Doe'),
-              validator: (value) => (value ?? '').trim().isEmpty ? 'Name is required' : null,
+              validator: (value) =>
+                  (value ?? '').trim().isEmpty ? 'Name is required' : null,
             ),
             const SizedBox(height: 10),
-            Text('Email', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryText)),
+            Text(
+              'Email',
+              style: textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 6),
             TextFormField(
               controller: emailController,
@@ -231,7 +287,12 @@ class _CreateAccountCard extends StatelessWidget {
               },
             ),
             const SizedBox(height: 10),
-            Text('Password', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryText)),
+            Text(
+              'Password',
+              style: textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 6),
             TextFormField(
               controller: passwordController,
@@ -242,13 +303,16 @@ class _CreateAccountCard extends StatelessWidget {
                 suffixIcon: IconButton(
                   onPressed: onTogglePassword,
                   icon: Icon(
-                    obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                     color: AppColors.primaryText,
                   ),
                 ),
               ),
-              validator: (value) =>
-                  (value ?? '').length < 6 ? 'Password must be at least 6 characters' : null,
+              validator: (value) => (value ?? '').length < 6
+                  ? 'Password must be at least 6 characters'
+                  : null,
             ),
             const SizedBox(height: 6),
             Row(
@@ -256,14 +320,21 @@ class _CreateAccountCard extends StatelessWidget {
                 Checkbox(
                   value: acceptedTerms,
                   activeColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.secondaryText, width: 1.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  side: const BorderSide(
+                    color: AppColors.secondaryText,
+                    width: 1.4,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   onChanged: onTermsChanged,
                 ),
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: textTheme.bodyLarge?.copyWith(color: AppColors.primaryText),
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: AppColors.primaryText,
+                      ),
                       children: const [
                         TextSpan(text: 'Agree with '),
                         TextSpan(
@@ -285,19 +356,32 @@ class _CreateAccountCard extends StatelessWidget {
             SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: onSignUp,
+                onPressed: isSubmitting ? null : onSignUp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
-                child: const Text('Sign Up'),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.white,
+                        ),
+                      )
+                    : const Text('Sign Up'),
               ),
             ),
             const SizedBox(height: 10),
             Center(
               child: RichText(
                 text: TextSpan(
-                  style: textTheme.bodyLarge?.copyWith(color: AppColors.primaryText),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: AppColors.primaryText,
+                  ),
                   children: [
                     const TextSpan(text: 'Already have an account? '),
                     WidgetSpan(
@@ -352,11 +436,6 @@ class SvgPictureAsset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      path,
-      height: 32,
-      width: 32,
-      fit: BoxFit.contain,
-    );
+    return SvgPicture.asset(path, height: 32, width: 32, fit: BoxFit.contain);
   }
 }
