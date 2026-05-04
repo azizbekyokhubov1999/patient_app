@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../manager/main_navigation_cubit.dart';
@@ -61,33 +62,35 @@ class _MainWrapperPageState extends State<MainWrapperPage> {
               selectedItemColor: AppColors.primary,
               unselectedItemColor: AppColors.secondaryText,
               type: BottomNavigationBarType.fixed,
-              selectedLabelStyle: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              iconSize: 22,
+              selectedLabelStyle: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
               unselectedLabelStyle: Theme.of(context).textTheme.labelMedium,
               items: const [
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
+                  icon: Icon(LucideIcons.house),
+                  activeIcon: Icon(LucideIcons.house),
                   label: 'Home',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.explore_outlined),
-                  activeIcon: Icon(Icons.explore),
+                  icon: Icon(LucideIcons.compass),
+                  activeIcon: Icon(LucideIcons.compass),
                   label: 'Explore',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today_outlined),
-                  activeIcon: Icon(Icons.calendar_today),
+                  icon: Icon(LucideIcons.calendar),
+                  activeIcon: Icon(LucideIcons.calendar),
                   label: 'Appointment',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  activeIcon: Icon(Icons.chat_bubble),
+                  icon: Icon(LucideIcons.messageCircle),
+                  activeIcon: Icon(LucideIcons.messageCircle),
                   label: 'Chat',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
+                  icon: Icon(LucideIcons.user),
+                  activeIcon: Icon(LucideIcons.user),
                   label: 'Profile',
                 ),
               ],

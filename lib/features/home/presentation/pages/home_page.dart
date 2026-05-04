@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/entities/doctor.dart';
@@ -83,7 +86,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 42,
+                        height: 46,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: state.services.length,
@@ -114,7 +117,7 @@ class _HomePageState extends State<HomePage> {
                                   children: [
                                     Icon(
                                       service.icon,
-                                      size: 14,
+                                      size: 19,
                                       color: isSelected
                                           ? AppColors.white
                                           : AppColors.primaryText,
@@ -178,7 +181,10 @@ class _HomePageState extends State<HomePage> {
                         itemBuilder: (context, index) {
                           return _DoctorCard(
                             doctor: state.doctors[index],
-                            onTap: () => debugPrint('Doctor card tapped'),
+                            onTap: () => context.push(
+                              AppPaths.doctorDetails,
+                              extra: state.doctors[index],
+                            ),
                           );
                         },
                       ),
@@ -229,9 +235,9 @@ class _HomeHeader extends StatelessWidget {
                     Row(
                       children: [
                         const Icon(
-                          Icons.location_on_rounded,
+                          LucideIcons.mapPin,
                           color: AppColors.yellow,
-                          size: 18,
+                          size: 20,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -242,7 +248,7 @@ class _HomeHeader extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                         const Icon(
-                          Icons.keyboard_arrow_down_rounded,
+                          LucideIcons.chevronDown,
                           color: AppColors.white,
                           size: 20,
                         ),
@@ -265,8 +271,9 @@ class _HomeHeader extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Icons.notifications_none_rounded,
+                        LucideIcons.bell,
                         color: AppColors.white,
+                        size: 22,
                       ),
                     ),
                     Positioned(
@@ -313,12 +320,14 @@ class _HomeHeader extends StatelessWidget {
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 prefixIcon: const Icon(
-                  Icons.search,
+                  LucideIcons.search,
                   color: AppColors.secondaryText,
+                  size: 22,
                 ),
                 suffixIcon: const Icon(
-                  Icons.tune_rounded,
+                  LucideIcons.slidersHorizontal,
                   color: AppColors.primaryText,
+                  size: 22,
                 ),
               ),
             ),
@@ -396,7 +405,7 @@ class _AppointmentCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Icons.person,
+                        LucideIcons.userRound,
                         color: AppColors.secondaryText,
                         size: 34,
                       ),
@@ -424,9 +433,9 @@ class _AppointmentCard extends StatelessWidget {
                           Row(
                             children: [
                               const Icon(
-                                Icons.star_rounded,
+                                LucideIcons.star,
                                 color: AppColors.yellow,
-                                size: 17,
+                                size: 18,
                               ),
                               const SizedBox(width: 3),
                               Text(
@@ -456,8 +465,8 @@ class _AppointmentCard extends StatelessWidget {
               child: Row(
                 children: [
                   const Icon(
-                    Icons.calendar_today_rounded,
-                    size: 15,
+                    LucideIcons.calendar,
+                    size: 18,
                     color: AppColors.white,
                   ),
                   const SizedBox(width: 6),
@@ -469,8 +478,8 @@ class _AppointmentCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   const Icon(
-                    Icons.access_time_rounded,
-                    size: 15,
+                    LucideIcons.clock,
+                    size: 18,
                     color: AppColors.white,
                   ),
                   const SizedBox(width: 6),
@@ -516,17 +525,24 @@ class _DotIndicators extends StatelessWidget {
   }
 }
 
-class _HospitalCard extends StatelessWidget {
+class _HospitalCard extends StatefulWidget {
   const _HospitalCard({required this.hospital, required this.onTap});
 
   final Hospital hospital;
   final VoidCallback onTap;
 
   @override
+  State<_HospitalCard> createState() => _HospitalCardState();
+}
+
+class _HospitalCardState extends State<_HospitalCard> {
+  bool _favorite = true;
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         width: 258,
@@ -545,7 +561,7 @@ class _HospitalCard extends StatelessWidget {
                   top: Radius.circular(14),
                 ),
                 image: DecorationImage(
-                  image: NetworkImage(hospital.imageUrl),
+                  image: NetworkImage(widget.hospital.imageUrl),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -553,17 +569,29 @@ class _HospitalCard extends StatelessWidget {
                 alignment: Alignment.topRight,
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite,
-                      color: AppColors.error,
-                      size: 16,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() => _favorite = !_favorite);
+                      },
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          LucideIcons.heart,
+                          color: _favorite
+                              ? AppColors.error
+                              : AppColors.secondaryText,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -578,7 +606,7 @@ class _HospitalCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          hospital.name,
+                          widget.hospital.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.titleMedium?.copyWith(
@@ -588,12 +616,12 @@ class _HospitalCard extends StatelessWidget {
                         ),
                       ),
                       const Icon(
-                        Icons.star_rounded,
+                        LucideIcons.star,
                         color: AppColors.yellow,
-                        size: 16,
+                        size: 18,
                       ),
                       Text(
-                        hospital.rating.toStringAsFixed(1),
+                        widget.hospital.rating.toStringAsFixed(1),
                         style: textTheme.labelLarge?.copyWith(
                           color: AppColors.primaryText,
                         ),
@@ -602,7 +630,7 @@ class _HospitalCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    hospital.tags,
+                    widget.hospital.tags,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.bodySmall?.copyWith(
@@ -613,14 +641,14 @@ class _HospitalCard extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Icons.location_on_outlined,
+                        LucideIcons.mapPin,
                         color: AppColors.secondaryText,
-                        size: 14,
+                        size: 16,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          hospital.address,
+                          widget.hospital.address,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.bodySmall?.copyWith(
@@ -634,26 +662,26 @@ class _HospitalCard extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Icons.access_time_rounded,
+                        LucideIcons.clock,
                         color: AppColors.secondaryText,
-                        size: 14,
+                        size: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        hospital.eta,
+                        widget.hospital.eta,
                         style: textTheme.bodySmall?.copyWith(
                           color: AppColors.secondaryText,
                         ),
                       ),
                       const SizedBox(width: 8),
                       const Icon(
-                        Icons.near_me_rounded,
+                        LucideIcons.navigation,
                         color: AppColors.primary,
-                        size: 14,
+                        size: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        hospital.distance,
+                        widget.hospital.distance,
                         style: textTheme.bodySmall?.copyWith(
                           color: AppColors.secondaryText,
                         ),
@@ -706,15 +734,16 @@ class _DoctorCard extends StatelessWidget {
                       right: -2,
                       bottom: -1,
                       child: Container(
-                        width: 16,
-                        height: 16,
+                        width: 18,
+                        height: 18,
                         decoration: const BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
+                        alignment: Alignment.center,
                         child: const Icon(
-                          Icons.check,
-                          size: 11,
+                          LucideIcons.badgeCheck,
+                          size: 12,
                           color: AppColors.white,
                         ),
                       ),
@@ -747,11 +776,7 @@ class _DoctorCard extends StatelessWidget {
             const Spacer(),
             Row(
               children: [
-                const Icon(
-                  Icons.star_rounded,
-                  color: AppColors.yellow,
-                  size: 16,
-                ),
+                const Icon(LucideIcons.star, color: AppColors.yellow, size: 18),
                 const SizedBox(width: 3),
                 Text(
                   doctor.rating.toStringAsFixed(1),
@@ -762,7 +787,7 @@ class _DoctorCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '${doctor.reviews} Reviews',
+                    '${doctor.reviewsCount} Reviews',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: textTheme.bodySmall?.copyWith(
@@ -771,15 +796,16 @@ class _DoctorCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.north_east_rounded,
-                    size: 15,
+                    LucideIcons.arrowUpRight,
+                    size: 17,
                     color: AppColors.primary,
                   ),
                 ),

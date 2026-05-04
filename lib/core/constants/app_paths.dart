@@ -18,4 +18,6 @@ abstract final class AppPaths {
   static const String booking = '/booking';
   static const String chat = '/chat';
   static const String profile = '/profile';
+
+  static const String doctorDetails = '/doctor-details';
 }

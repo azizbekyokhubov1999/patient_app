@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/complete_profile_page.dart';
@@ -14,6 +15,8 @@ import '../../features/auth/presentation/pages/your_location_page.dart';
 import '../../features/booking/presentation/pages/appointment_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
+import '../../features/home/domain/entities/doctor.dart';
+import '../../features/home/presentation/pages/doctor_details_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -74,6 +77,24 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.auth,
         builder: (context, state) => const SignInPage(),
+      ),
+      GoRoute(
+        path: AppPaths.doctorDetails,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! Doctor) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Doctor not found')),
+            );
+          }
+          return DoctorDetailsPage(doctor: extra);
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
