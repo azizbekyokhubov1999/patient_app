@@ -1,4 +1,4 @@
-import '../../domain/entities/hospital_explore_model.dart';
+import '../../../home/domain/entities/hospital.dart';
 
 class ExploreState {
   const ExploreState({
@@ -12,19 +12,19 @@ class ExploreState {
   static const double kDefaultUserLat = 40.7128;
   static const double kDefaultUserLng = -74.006;
 
-  final List<HospitalExploreModel> hospitals;
+  final List<Hospital> hospitals;
   final double userLatitude;
   final double userLongitude;
   final int selectedHospitalIndex;
 
-  HospitalExploreModel? get selectedHospital {
+  Hospital? get selectedHospital {
     if (hospitals.isEmpty) return null;
     final i = selectedHospitalIndex.clamp(0, hospitals.length - 1);
     return hospitals[i];
   }
 
   ExploreState copyWith({
-    List<HospitalExploreModel>? hospitals,
+    List<Hospital>? hospitals,
     double? userLatitude,
     double? userLongitude,
     int? selectedHospitalIndex,

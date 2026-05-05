@@ -1,5 +1,5 @@
-import '../entities/hospital_explore_model.dart';
+import '../../../home/domain/entities/hospital.dart';
 
 abstract class ExploreRepository {
-  Future<List<HospitalExploreModel>> getNearbyHospitals();
+  Future<List<Hospital>> getNearbyHospitals();
 }

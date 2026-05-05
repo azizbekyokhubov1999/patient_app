@@ -1,5 +1,5 @@
-import '../../domain/entities/hospital_explore_model.dart';
 import '../../domain/repositories/explore_repository.dart';
+import '../../../home/domain/entities/hospital.dart';
 import '../datasources/explore_remote_data_source.dart';
 
 class ExploreRepositoryImpl implements ExploreRepository {
@@ -8,7 +8,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
   final ExploreRemoteDataSource _remote;
 
   @override
-  Future<List<HospitalExploreModel>> getNearbyHospitals() {
+  Future<List<Hospital>> getNearbyHospitals() {
     return _remote.fetchNearbyHospitals();
   }
 }

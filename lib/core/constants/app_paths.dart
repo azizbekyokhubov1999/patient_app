@@ -20,4 +20,5 @@ abstract final class AppPaths {
   static const String profile = '/profile';
 
   static const String doctorDetails = '/doctor-details';
+  static const String hospitalDetails = '/hospital-details';
 }

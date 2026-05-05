@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/datasources/explore_remote_data_source.dart';
 import '../../data/repositories/explore_repository_impl.dart';
-import '../../domain/entities/hospital_explore_model.dart';
+import '../../../home/domain/entities/hospital.dart';
 import '../manager/explore_cubit.dart';
 import '../manager/explore_state.dart';
 
@@ -76,7 +78,7 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
     });
   }
 
-  void _animateMapToHospital(HospitalExploreModel h) {
+  void _animateMapToHospital(Hospital h) {
     _mapController.move(
       LatLng(h.latitude, h.longitude),
       _mapController.camera.zoom.clamp(12.0, 16.0),
@@ -220,7 +222,9 @@ class _ExploreMap extends StatelessWidget {
                 height: 64,
                 alignment: Alignment.center,
                 child: _HospitalMapMarker(
-                  distanceLabel: state.hospitals[i].distanceMilesLabel,
+                  distanceLabel: state.hospitals[i].distance
+                      .toLowerCase()
+                      .replaceAll('miles', 'mi'),
                   selected: i == state.selectedHospitalIndex,
                   onTap: () => onHospitalMarkerTap(i),
                 ),
@@ -411,7 +415,7 @@ class _HospitalCarousel extends StatelessWidget {
   });
 
   final PageController pageController;
-  final List<HospitalExploreModel> hospitals;
+  final List<Hospital> hospitals;
   final ValueChanged<int> onPageChanged;
 
   @override
@@ -445,7 +449,7 @@ class _HospitalCarousel extends StatelessWidget {
 class _HospitalExploreCard extends StatefulWidget {
   const _HospitalExploreCard({required this.hospital});
 
-  final HospitalExploreModel hospital;
+  final Hospital hospital;
 
   @override
   State<_HospitalExploreCard> createState() => _HospitalExploreCardState();
@@ -463,166 +467,169 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
       borderRadius: BorderRadius.circular(16),
       color: AppColors.white,
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                height: 88,
-                child: h.imageUrl != null
-                    ? Image.network(
-                        h.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, _) =>
-                            const ColoredBox(color: AppColors.neutral200),
-                      )
-                    : const ColoredBox(color: AppColors.neutral200),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              h.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    color: AppColors.primaryText,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                LucideIcons.star,
-                                size: 16,
-                                color: AppColors.yellow,
-                                fill: 1,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                h.rating.toStringAsFixed(1),
-                                style: Theme.of(context).textTheme.labelLarge
+      child: InkWell(
+        onTap: () => context.push(AppPaths.hospitalDetails, extra: h),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 88,
+                  child: Image.network(
+                    h.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, _) =>
+                        const ColoredBox(color: AppColors.neutral200),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                h.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(
-                                      fontWeight: FontWeight.w700,
                                       color: AppColors.primaryText,
+                                      fontWeight: FontWeight.w700,
                                     ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        h.specialties,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.secondaryText,
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  LucideIcons.star,
+                                  size: 16,
+                                  color: AppColors.yellow,
+                                  fill: 1,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  h.rating.toStringAsFixed(1),
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primaryText,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            LucideIcons.mapPin,
-                            size: 14,
-                            color: AppColors.secondaryText,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              h.address,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: AppColors.secondaryText,
-                                    height: 1.25,
-                                  ),
+                        const SizedBox(height: 4),
+                        Text(
+                          h.tags,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.secondaryText),
+                        ),
+                        const Spacer(),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              LucideIcons.mapPin,
+                              size: 14,
+                              color: AppColors.secondaryText,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(
-                            LucideIcons.clock,
-                            size: 14,
-                            color: AppColors.secondaryText,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              '${h.travelTime} • ${h.distanceDetail}',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: AppColors.primaryText,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                h.address,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.secondaryText,
+                                      height: 1.25,
+                                    ),
+                              ),
                             ),
-                          ),
-                          Material(
-                            color: AppColors.primary,
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: () => debugPrint('Navigate to ${h.name}'),
-                              child: const Padding(
-                                padding: EdgeInsets.all(8),
-                                child: Icon(
-                                  LucideIcons.navigation,
-                                  color: AppColors.white,
-                                  size: 18,
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              LucideIcons.clock,
+                              size: 14,
+                              color: AppColors.secondaryText,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${h.eta} • ${h.distance}',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.primaryText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                            Material(
+                              color: AppColors.primary,
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () => context.push(
+                                  AppPaths.hospitalDetails,
+                                  extra: h,
+                                ),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(
+                                    LucideIcons.navigation,
+                                    color: AppColors.white,
+                                    size: 18,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Material(
-              color: AppColors.white,
-              shape: const CircleBorder(),
-              elevation: 2,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => setState(() => _favorite = !_favorite),
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(
-                    LucideIcons.heart,
-                    size: 18,
-                    color: _favorite
-                        ? AppColors.error
-                        : AppColors.secondaryText,
-                    fill: _favorite ? 1 : 0,
+              ],
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: AppColors.white,
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => setState(() => _favorite = !_favorite),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      LucideIcons.heart,
+                      size: 18,
+                      color: _favorite
+                          ? AppColors.error
+                          : AppColors.secondaryText,
+                      fill: _favorite ? 1 : 0,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -15,7 +15,9 @@ import '../../features/auth/presentation/pages/your_location_page.dart';
 import '../../features/booking/presentation/pages/appointment_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
+import '../../features/explore/presentation/pages/hospital_details_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
+import '../../features/home/domain/entities/hospital.dart';
 import '../../features/home/presentation/pages/doctor_details_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
@@ -94,6 +96,29 @@ abstract final class AppRouter {
             );
           }
           return DoctorDetailsPage(doctor: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.hospitalDetails,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is Hospital) {
+            return HospitalDetailsPage(hospital: extra);
+          }
+          if (extra is String) {
+            return HospitalDetailsPage(
+              hospital: HospitalDetailsPage.fallbackById(extra),
+            );
+          }
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            body: const Center(child: Text('Hospital not found')),
+          );
         },
       ),
       StatefulShellRoute.indexedStack(
