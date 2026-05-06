@@ -122,7 +122,7 @@ class HomeCubit extends Cubit<HomeState> {
                   isVerified: true,
                   reviewImages: [
                     'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=400&q=80',
-                    'https://images.unsplash.com/photo-1588776814546-1ffcf47240a9?auto=format&fit=crop&w=400&q=80',
+                    'https://plus.unsplash.com/premium_photo-1664475450083-5c9eef17a191?w=500&q=80',
                   ],
                 ),
               ],
@@ -224,7 +224,7 @@ class HomeCubit extends Cubit<HomeState> {
                   rating: 5.0,
                   imageUrls: [
                     'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=400&q=80',
-                    'https://images.unsplash.com/photo-1588776814546-1ffcf47240a9?auto=format&fit=crop&w=400&q=80',
+                    'https://plus.unsplash.com/premium_photo-1664475450083-5c9eef17a191?w=500&q=80',
                   ],
                 ),
               ],

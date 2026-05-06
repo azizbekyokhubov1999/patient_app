@@ -155,7 +155,10 @@ class _HomePageState extends State<HomePage> {
                           itemBuilder: (context, index) {
                             return _HospitalCard(
                               hospital: state.hospitals[index],
-                              onTap: () => debugPrint('Hospital card tapped'),
+                              onTap: () => context.push(
+                                AppPaths.hospitalDetails,
+                                extra: state.hospitals[index],
+                              ),
                             );
                           },
                         ),
@@ -418,6 +421,8 @@ class _AppointmentCard extends StatelessWidget {
                         children: [
                           Text(
                             appointment.doctorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: textTheme.titleMedium?.copyWith(
                               color: AppColors.primaryText,
                               fontWeight: FontWeight.w700,
@@ -425,6 +430,8 @@ class _AppointmentCard extends StatelessWidget {
                           ),
                           Text(
                             appointment.specialty,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: textTheme.bodyMedium?.copyWith(
                               color: AppColors.secondaryText,
                             ),
@@ -434,8 +441,9 @@ class _AppointmentCard extends StatelessWidget {
                             children: [
                               const Icon(
                                 LucideIcons.star,
-                                color: AppColors.yellow,
+                                color: Colors.amber,
                                 size: 18,
+                                fill: 1,
                               ),
                               const SizedBox(width: 3),
                               Text(
@@ -586,9 +594,8 @@ class _HospitalCardState extends State<_HospitalCard> {
                         alignment: Alignment.center,
                         child: Icon(
                           LucideIcons.heart,
-                          color: _favorite
-                              ? AppColors.error
-                              : AppColors.secondaryText,
+                          color: _favorite ? Colors.red : Colors.grey,
+                          fill: _favorite ? 1 : 0,
                           size: 18,
                         ),
                       ),
@@ -617,8 +624,9 @@ class _HospitalCardState extends State<_HospitalCard> {
                       ),
                       const Icon(
                         LucideIcons.star,
-                        color: AppColors.yellow,
+                        color: Colors.amber,
                         size: 18,
+                        fill: 1,
                       ),
                       Text(
                         widget.hospital.rating.toStringAsFixed(1),
@@ -667,10 +675,14 @@ class _HospitalCardState extends State<_HospitalCard> {
                         size: 16,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        widget.hospital.eta,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: AppColors.secondaryText,
+                      Expanded(
+                        child: Text(
+                          widget.hospital.eta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppColors.secondaryText,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -680,10 +692,14 @@ class _HospitalCardState extends State<_HospitalCard> {
                         size: 16,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        widget.hospital.distance,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: AppColors.secondaryText,
+                      Flexible(
+                        child: Text(
+                          widget.hospital.distance,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppColors.secondaryText,
+                          ),
                         ),
                       ),
                     ],
@@ -776,7 +792,12 @@ class _DoctorCard extends StatelessWidget {
             const Spacer(),
             Row(
               children: [
-                const Icon(LucideIcons.star, color: AppColors.yellow, size: 18),
+                const Icon(
+                  LucideIcons.star,
+                  color: Colors.amber,
+                  size: 18,
+                  fill: 1,
+                ),
                 const SizedBox(width: 3),
                 Text(
                   doctor.rating.toStringAsFixed(1),

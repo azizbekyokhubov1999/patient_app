@@ -23,8 +23,15 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   final TextEditingController _reviewSearchController = TextEditingController();
   String _reviewQuery = '';
   final Set<String> _selectedFilters = {'Verified', 'Latest'};
+  late List<DoctorReview> _reviews;
 
   Doctor get _d => widget.doctor;
+
+  @override
+  void initState() {
+    super.initState();
+    _reviews = List<DoctorReview>.from(_d.patientReviews);
+  }
 
   @override
   void dispose() {
@@ -33,7 +40,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   }
 
   List<DoctorReview> get _filteredReviews {
-    var list = List<DoctorReview>.from(_d.patientReviews);
+    var list = List<DoctorReview>.from(_reviews);
     if (_selectedFilters.contains('Verified')) {
       list = list.where((r) => r.verified).toList();
     }
@@ -97,9 +104,8 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     const SizedBox(width: 8),
                     _CircleHeaderIcon(
                       icon: LucideIcons.heart,
-                      iconColor: _favorite
-                          ? AppColors.error
-                          : AppColors.primaryText,
+                      iconColor: _favorite ? Colors.red : Colors.grey,
+                      iconFill: _favorite ? 1 : 0,
                       onTap: () => setState(() => _favorite = !_favorite),
                     ),
                   ],
@@ -165,8 +171,9 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                             children: [
                               const Icon(
                                 LucideIcons.star,
-                                color: AppColors.yellow,
+                                color: Colors.amber,
                                 size: 18,
+                                fill: 1,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -415,7 +422,17 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       ),
                     ),
                     InkWell(
-                      onTap: () => debugPrint('Add review tapped'),
+                      onTap: () async {
+                        final review = await context.pushNamed<DoctorReview>(
+                          'leave-review-doctor',
+                          extra: _d,
+                        );
+                        if (review != null && mounted) {
+                          setState(() {
+                            _reviews = [review, ..._reviews];
+                          });
+                        }
+                      },
                       child: Text(
                         '+ add review',
                         style: textTheme.labelLarge?.copyWith(
@@ -549,11 +566,13 @@ class _CircleHeaderIcon extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.iconColor,
+    this.iconFill = 0,
   });
 
   final IconData icon;
   final VoidCallback onTap;
   final Color? iconColor;
+  final double iconFill;
 
   @override
   Widget build(BuildContext context) {
@@ -572,6 +591,7 @@ class _CircleHeaderIcon extends StatelessWidget {
             icon,
             size: 20,
             color: iconColor ?? AppColors.primaryText,
+            fill: iconFill,
           ),
         ),
       ),
@@ -823,6 +843,8 @@ class _ReviewCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             review.text,
+            softWrap: true,
+            overflow: TextOverflow.visible,
             style: textTheme.bodyMedium?.copyWith(
               color: AppColors.secondaryText,
               height: 1.45,
@@ -830,24 +852,36 @@ class _ReviewCard extends StatelessWidget {
           ),
           if (review.imageUrls.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Row(
-              children: review.imageUrls
-                  .take(2)
-                  .map(
-                    (url) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          url,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
+            SizedBox(
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: review.imageUrls.take(2).length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final url = review.imageUrls[index];
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      url,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 72,
+                        height: 72,
+                        color: AppColors.stroke,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          LucideIcons.imageOff,
+                          size: 18,
+                          color: AppColors.secondaryText,
                         ),
                       ),
                     ),
-                  )
-                  .toList(),
+                  );
+                },
+              ),
             ),
           ],
           const SizedBox(height: 10),
@@ -859,8 +893,9 @@ class _ReviewCard extends StatelessWidget {
                   LucideIcons.star,
                   size: 16,
                   color: i < review.rating.round()
-                      ? AppColors.yellow
+                      ? Colors.amber
                       : AppColors.stroke,
+                  fill: i < review.rating.round() ? 1 : 0,
                 ),
               ),
               const SizedBox(width: 6),

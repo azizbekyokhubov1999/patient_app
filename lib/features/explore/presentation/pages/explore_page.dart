@@ -487,6 +487,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
@@ -510,7 +511,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                                 Icon(
                                   LucideIcons.star,
                                   size: 16,
-                                  color: AppColors.yellow,
+                                  color: Colors.amber,
                                   fill: 1,
                                 ),
                                 const SizedBox(width: 4),
@@ -526,7 +527,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           h.tags,
                           maxLines: 1,
@@ -534,7 +535,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: AppColors.secondaryText),
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 2),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -558,7 +559,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(
@@ -619,9 +620,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                     child: Icon(
                       LucideIcons.heart,
                       size: 18,
-                      color: _favorite
-                          ? AppColors.error
-                          : AppColors.secondaryText,
+                      color: _favorite ? Colors.red : Colors.grey,
                       fill: _favorite ? 1 : 0,
                     ),
                   ),

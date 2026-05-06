@@ -16,9 +16,11 @@ import '../../features/booking/presentation/pages/appointment_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
+import '../../features/explore/presentation/pages/leave_review_hospital_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
 import '../../features/home/domain/entities/hospital.dart';
 import '../../features/home/presentation/pages/doctor_details_page.dart';
+import '../../features/home/presentation/pages/leave_review_doctor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -119,6 +121,43 @@ abstract final class AppRouter {
             ),
             body: const Center(child: Text('Hospital not found')),
           );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.leaveReviewHospital,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! Hospital) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Hospital not found')),
+            );
+          }
+          return LeaveReviewHospitalPage(hospital: extra);
+        },
+      ),
+      GoRoute(
+        name: 'leave-review-doctor',
+        path: AppPaths.leaveReviewDoctor,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! Doctor) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Doctor not found')),
+            );
+          }
+          return LeaveReviewDoctorPage(doctor: extra);
         },
       ),
       StatefulShellRoute.indexedStack(

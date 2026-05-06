@@ -138,7 +138,7 @@ class HospitalDetailsPage extends StatelessWidget {
           isVerified: true,
           reviewImages: [
             'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=400&q=80',
-            'https://images.unsplash.com/photo-1588776814546-1ffcf47240a9?auto=format&fit=crop&w=400&q=80',
+            'https://plus.unsplash.com/premium_photo-1664475450083-5c9eef17a191?w=500&q=80',
           ],
         ),
       ],
@@ -241,6 +241,19 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
                                   .read<HospitalDetailsCubit>()
                                   .filteredReviews,
                               activeFilters: state.activeReviewFilters,
+                              onTapAddReview: () async {
+                                final updatedHospital = await context
+                                    .push<Hospital>(
+                                      AppPaths.leaveReviewHospital,
+                                      extra: h,
+                                    );
+                                if (updatedHospital != null &&
+                                    context.mounted) {
+                                  context
+                                      .read<HospitalDetailsCubit>()
+                                      .updateHospital(updatedHospital);
+                                }
+                              },
                               onSearchChanged: context
                                   .read<HospitalDetailsCubit>()
                                   .setReviewQuery,
@@ -372,7 +385,12 @@ class _HeaderInfo extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(LucideIcons.star, color: AppColors.yellow, size: 18),
+              const Icon(
+                LucideIcons.star,
+                color: Colors.amber,
+                size: 18,
+                fill: 1,
+              ),
               const SizedBox(width: 4),
               Text(
                 hospital.rating.toStringAsFixed(1),
@@ -1015,7 +1033,8 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                                 child: Icon(
                                   LucideIcons.star,
                                   size: 14,
-                                  color: AppColors.yellow,
+                                  color: Colors.amber,
+                                  fill: 1,
                                 ),
                               ),
                             const SizedBox(width: 4),
@@ -1037,10 +1056,14 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                                 color: AppColors.neutral300,
                               ),
                             ),
-                            Text(
-                              '${doctor.reviewsCount} Reviews',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: AppColors.secondaryText),
+                            Flexible(
+                              child: Text(
+                                '${doctor.reviewsCount} Reviews',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: AppColors.secondaryText),
+                              ),
                             ),
                           ],
                         ),
@@ -1060,9 +1083,7 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                         child: Icon(
                           LucideIcons.heart,
                           size: 18,
-                          color: _favorite
-                              ? AppColors.error
-                              : AppColors.secondaryText,
+                          color: _favorite ? Colors.red : Colors.grey,
                           fill: _favorite ? 1 : 0,
                         ),
                       ),
@@ -1248,12 +1269,14 @@ class _ReviewsTab extends StatelessWidget {
   const _ReviewsTab({
     required this.reviews,
     required this.activeFilters,
+    required this.onTapAddReview,
     required this.onSearchChanged,
     required this.onToggleFilter,
   });
 
   final List<HospitalReview> reviews;
   final Set<String> activeFilters;
+  final VoidCallback onTapAddReview;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onToggleFilter;
 
@@ -1280,13 +1303,24 @@ class _ReviewsTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(LucideIcons.pencilLine, size: 16, color: AppColors.primary),
-              const SizedBox(width: 4),
-              Text(
-                'add review',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: onTapAddReview,
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.pencilLine,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'add review',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1532,7 +1566,8 @@ class _HospitalReviewCardState extends State<_HospitalReviewCard> {
                   child: Icon(
                     LucideIcons.star,
                     size: 14,
-                    color: AppColors.yellow,
+                    color: Colors.amber,
+                    fill: 1,
                   ),
                 ),
               const SizedBox(width: 4),

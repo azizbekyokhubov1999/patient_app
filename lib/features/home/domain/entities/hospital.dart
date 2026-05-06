@@ -44,4 +44,48 @@ class Hospital {
   final double latitude;
   final double longitude;
   final String? mapImageUrl;
+
+  Hospital copyWith({
+    String? id,
+    String? name,
+    double? rating,
+    String? tags,
+    String? address,
+    String? distance,
+    String? eta,
+    String? imageUrl,
+    String? description,
+    List<String>? treatments,
+    List<Doctor>? specialists,
+    Map<String, String>? timings,
+    HospitalContactPerson? contactPerson,
+    List<String>? images,
+    List<String>? galleryImages,
+    List<HospitalReview>? reviews,
+    double? latitude,
+    double? longitude,
+    String? mapImageUrl,
+  }) {
+    return Hospital(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      rating: rating ?? this.rating,
+      tags: tags ?? this.tags,
+      address: address ?? this.address,
+      distance: distance ?? this.distance,
+      eta: eta ?? this.eta,
+      imageUrl: imageUrl ?? this.imageUrl,
+      description: description ?? this.description,
+      treatments: treatments ?? this.treatments,
+      specialists: specialists ?? this.specialists,
+      timings: timings ?? this.timings,
+      contactPerson: contactPerson ?? this.contactPerson,
+      images: images ?? this.images,
+      galleryImages: galleryImages ?? this.galleryImages,
+      reviews: reviews ?? this.reviews,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      mapImageUrl: mapImageUrl ?? this.mapImageUrl,
+    );
+  }
 }
