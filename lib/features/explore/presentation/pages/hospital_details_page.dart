@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../booking/presentation/models/booking_route_args.dart';
 import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/doctor_review.dart';
 import '../../../home/domain/entities/hospital.dart';
@@ -190,7 +191,10 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
             child: SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: () => debugPrint('Book appointment: ${h.name}'),
+                onPressed: () => context.push(
+                  AppPaths.booking,
+                  extra: BookingRouteArgs(hospital: h),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
@@ -234,7 +238,10 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
                               },
                             ),
                             _TreatmentsTab(treatments: h.treatments),
-                            _SpecialistsTab(specialists: h.specialists),
+                            _SpecialistsTab(
+                              specialists: h.specialists,
+                              hospital: h,
+                            ),
                             _GalleryTab(galleryImages: h.galleryImages),
                             _ReviewsTab(
                               reviews: context
@@ -892,9 +899,13 @@ class _TreatmentsTab extends StatelessWidget {
 }
 
 class _SpecialistsTab extends StatelessWidget {
-  const _SpecialistsTab({required this.specialists});
+  const _SpecialistsTab({
+    required this.specialists,
+    required this.hospital,
+  });
 
   final List<Doctor> specialists;
+  final Hospital hospital;
 
   @override
   Widget build(BuildContext context) {
@@ -925,7 +936,10 @@ class _SpecialistsTab extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) =>
-                  _SpecialistCard(doctor: specialists[index]),
+                  _SpecialistCard(
+                    doctor: specialists[index],
+                    hospital: hospital,
+                  ),
             ),
         ],
       ),
@@ -934,9 +948,13 @@ class _SpecialistsTab extends StatelessWidget {
 }
 
 class _SpecialistCard extends StatefulWidget {
-  const _SpecialistCard({required this.doctor});
+  const _SpecialistCard({
+    required this.doctor,
+    required this.hospital,
+  });
 
   final Doctor doctor;
+  final Hospital hospital;
 
   @override
   State<_SpecialistCard> createState() => _SpecialistCardState();
@@ -1096,7 +1114,13 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () =>
-                      context.push(AppPaths.doctorDetails, extra: doctor),
+                      context.push(
+                        AppPaths.booking,
+                        extra: BookingRouteArgs(
+                          hospital: widget.hospital,
+                          selectedSpecialist: doctor,
+                        ),
+                      ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.background,
                     foregroundColor: AppColors.primary,

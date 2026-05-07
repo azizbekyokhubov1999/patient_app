@@ -12,6 +12,7 @@ abstract final class AppColors {
 
   // UI colors
   static const Color stroke = Color(0xFFE0E0E0);
+  static const Color outline = stroke;
   static const Color background = Color(0xFFF6F6F6);
   static const Color white = Color(0xFFFFFFFF);
 
@@ -28,6 +29,7 @@ abstract final class AppColors {
   // Semantic colors
   static const Color error = Color(0xFFE53935);
   static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFFFA12E);
 
   // Neutral shades
   static const Color neutral900 = Color(0xFF111827);

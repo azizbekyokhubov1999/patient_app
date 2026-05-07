@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/doctor_review.dart';
@@ -540,7 +541,10 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
             child: SizedBox(
               height: 52,
               child: ElevatedButton(
-                onPressed: () => debugPrint('Book Appointment'),
+                onPressed: () => context.push(
+                  AppPaths.booking,
+                  extra: _d,
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,

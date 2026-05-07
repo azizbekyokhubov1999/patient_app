@@ -16,6 +16,11 @@ abstract final class AppPaths {
   static const String home = '/home';
   static const String explore = '/explore';
   static const String booking = '/booking';
+  static const String selectPackage = '/booking/select-package';
+  static const String patientDetails = '/booking/patient-details';
+  static const String paymentMethod = '/booking/payment-method';
+  static const String addCard = '/booking/payment-methods/add-card';
+  static const String reviewSummary = '/booking/review-summary';
   static const String chat = '/chat';
   static const String profile = '/profile';
 

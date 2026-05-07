@@ -12,7 +12,13 @@ import '../../features/auth/presentation/pages/splash_screen.dart';
 import '../../features/auth/presentation/pages/verify_code_page.dart';
 import '../../features/auth/presentation/pages/welcome_screen.dart';
 import '../../features/auth/presentation/pages/your_location_page.dart';
+import '../../features/booking/presentation/models/booking_route_args.dart';
 import '../../features/booking/presentation/pages/appointment_page.dart';
+import '../../features/booking/presentation/pages/add_card_page.dart';
+import '../../features/booking/presentation/pages/patient_details_page.dart';
+import '../../features/booking/presentation/pages/payment_methods_page.dart';
+import '../../features/booking/presentation/pages/review_summary_page.dart';
+import '../../features/booking/presentation/pages/select_package_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
@@ -160,6 +166,82 @@ abstract final class AppRouter {
           return LeaveReviewDoctorPage(doctor: extra);
         },
       ),
+      GoRoute(
+        path: AppPaths.selectPackage,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! SelectPackageArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Booking data not found')),
+            );
+          }
+          return SelectPackagePage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.patientDetails,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! PatientDetailsArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Patient details not found')),
+            );
+          }
+          return PatientDetailsPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.paymentMethod,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! PaymentMethodArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Payment data not found')),
+            );
+          }
+          return PaymentMethodsPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.addCard,
+        builder: (context, state) => const AddCardPage(),
+      ),
+      GoRoute(
+        path: AppPaths.reviewSummary,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ReviewSummaryArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Review summary data not found')),
+            );
+          }
+          return ReviewSummaryPage(args: extra);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainWrapperPage(navigationShell: navigationShell);
@@ -185,7 +267,27 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: AppPaths.booking,
-                builder: (context, state) => const AppointmentPage(),
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is Doctor) {
+                    return AppointmentPage(doctor: extra);
+                  }
+                  if (extra is Hospital) {
+                    return AppointmentPage(hospital: extra);
+                  }
+                  if (extra is String) {
+                    return AppointmentPage(doctorId: extra);
+                  }
+                  if (extra is BookingRouteArgs) {
+                    return AppointmentPage(
+                      doctor: extra.doctor,
+                      doctorId: extra.doctorId,
+                      hospital: extra.hospital,
+                      selectedSpecialist: extra.selectedSpecialist,
+                    );
+                  }
+                  return const AppointmentPage();
+                },
               ),
             ],
           ),
