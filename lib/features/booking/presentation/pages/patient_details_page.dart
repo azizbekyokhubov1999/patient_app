@@ -32,6 +32,7 @@ class PatientDetailsPage extends StatelessWidget {
         repository: BookingRepositoryImpl(BookingRemoteDataSourceImpl()),
         doctorId: doctorId,
         initialDate: args.selectedDate,
+        initialSelectedTime: args.selectedTime,
         initialSelectedPackage: args.selectedPackage,
       ),
       child: _PatientDetailsView(args: args),

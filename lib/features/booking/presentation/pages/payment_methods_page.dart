@@ -36,6 +36,7 @@ class PaymentMethodsPage extends StatelessWidget {
         repository: BookingRepositoryImpl(BookingRemoteDataSourceImpl()),
         doctorId: doctorId,
         initialDate: args.selectedDate,
+        initialSelectedTime: args.selectedTime,
         initialSelectedPackage: args.selectedPackage,
         initialPatientInfo: args.patientInfo,
         initialSelectedPaymentMethod: args.selectedPaymentMethod,

@@ -15,7 +15,10 @@ import '../../features/auth/presentation/pages/your_location_page.dart';
 import '../../features/booking/presentation/models/booking_route_args.dart';
 import '../../features/booking/presentation/pages/appointment_page.dart';
 import '../../features/booking/presentation/pages/add_card_page.dart';
+import '../../features/booking/presentation/pages/appointments_page.dart';
 import '../../features/booking/presentation/pages/patient_details_page.dart';
+import '../../features/booking/presentation/pages/booking_success_page.dart';
+import '../../features/booking/presentation/pages/e_receipt_page.dart';
 import '../../features/booking/presentation/pages/payment_methods_page.dart';
 import '../../features/booking/presentation/pages/review_summary_page.dart';
 import '../../features/booking/presentation/pages/select_package_page.dart';
@@ -167,6 +170,31 @@ abstract final class AppRouter {
         },
       ),
       GoRoute(
+        name: 'book-appointment',
+        path: AppPaths.bookAppointment,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is Doctor) {
+            return AppointmentPage(doctor: extra);
+          }
+          if (extra is Hospital) {
+            return AppointmentPage(hospital: extra);
+          }
+          if (extra is String) {
+            return AppointmentPage(doctorId: extra);
+          }
+          if (extra is BookingRouteArgs) {
+            return AppointmentPage(
+              doctor: extra.doctor,
+              doctorId: extra.doctorId,
+              hospital: extra.hospital,
+              selectedSpecialist: extra.selectedSpecialist,
+            );
+          }
+          return const AppointmentPage();
+        },
+      ),
+      GoRoute(
         path: AppPaths.selectPackage,
         builder: (context, state) {
           final extra = state.extra;
@@ -242,6 +270,22 @@ abstract final class AppRouter {
           return ReviewSummaryPage(args: extra);
         },
       ),
+      GoRoute(
+        path: AppPaths.bookingSuccess,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! BookingSuccessArgs) {
+            return const BookingSuccessPage(
+              doctorName: 'Dr. Jenny William',
+            );
+          }
+          return BookingSuccessPage(doctorName: extra.doctorName);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.eReceipt,
+        builder: (context, state) => const EReceiptPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainWrapperPage(navigationShell: navigationShell);
@@ -267,27 +311,7 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: AppPaths.booking,
-                builder: (context, state) {
-                  final extra = state.extra;
-                  if (extra is Doctor) {
-                    return AppointmentPage(doctor: extra);
-                  }
-                  if (extra is Hospital) {
-                    return AppointmentPage(hospital: extra);
-                  }
-                  if (extra is String) {
-                    return AppointmentPage(doctorId: extra);
-                  }
-                  if (extra is BookingRouteArgs) {
-                    return AppointmentPage(
-                      doctor: extra.doctor,
-                      doctorId: extra.doctorId,
-                      hospital: extra.hospital,
-                      selectedSpecialist: extra.selectedSpecialist,
-                    );
-                  }
-                  return const AppointmentPage();
-                },
+                builder: (context, state) => const AppointmentsPage(),
               ),
             ],
           ),

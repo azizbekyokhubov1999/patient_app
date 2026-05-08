@@ -33,6 +33,7 @@ class SelectPackagePage extends StatelessWidget {
         repository: BookingRepositoryImpl(BookingRemoteDataSourceImpl()),
         doctorId: doctorId,
         initialDate: args.selectedDate,
+        initialSelectedTime: args.selectedTime,
         initialSelectedPackage: args.selectedPackage,
       ),
       child: _SelectPackageView(args: args),

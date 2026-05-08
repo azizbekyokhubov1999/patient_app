@@ -16,6 +16,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     required BookingRepository repository,
     required String doctorId,
     DateTime? initialDate,
+    String? initialSelectedTime,
     PackageType? initialSelectedPackage,
     PatientInfo? initialPatientInfo,
     PaymentMethodType? initialSelectedPaymentMethod,
@@ -27,6 +28,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         super(
           BookingInitial(
             selectedDate: _dateOnly(initialDate ?? DateTime.now()),
+            selectedTime: initialSelectedTime,
             selectedPackage: initialSelectedPackage,
             patientInfo: initialPatientInfo,
             selectedPaymentMethod: initialSelectedPaymentMethod,
@@ -43,6 +45,8 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     on<SelectPaymentMethodEvent>(_onSelectPaymentMethod);
     on<SelectSavedCardEvent>(_onSelectSavedCard);
     on<AddNewCardEvent>(_onAddNewCard);
+    on<ConfirmBookingEvent>(_onConfirmBooking);
+    on<StartBookingEvent>(_onStartBooking);
   }
 
   final BookingRepository _repository;
@@ -472,6 +476,89 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         savedCards: updatedCards,
         selectedCardId: event.card.id,
       ),
+    );
+  }
+
+  Future<void> _onConfirmBooking(
+    ConfirmBookingEvent event,
+    Emitter<BookingState> emit,
+  ) async {
+    final current = state;
+    emit(
+      BookingConfirming(
+        selectedDate: current.selectedDate,
+        selectedTime: current.selectedTime,
+        selectedPackage: current.selectedPackage,
+        patientInfo: current.patientInfo,
+        selectedPaymentMethod: current.selectedPaymentMethod,
+        walletBalance: current.walletBalance,
+        savedCards: current.savedCards,
+        selectedCardId: current.selectedCardId,
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+
+    final hasRequiredData =
+        current.selectedTime != null &&
+        current.selectedPackage != null &&
+        current.patientInfo != null &&
+        current.selectedPaymentMethod != null;
+
+    if (!hasRequiredData) {
+      emit(
+        BookingConfirmFailure(
+          message: 'Booking details are incomplete.',
+          selectedDate: current.selectedDate,
+          selectedTime: current.selectedTime,
+          selectedPackage: current.selectedPackage,
+          patientInfo: current.patientInfo,
+          selectedPaymentMethod: current.selectedPaymentMethod,
+          walletBalance: current.walletBalance,
+          savedCards: current.savedCards,
+          selectedCardId: current.selectedCardId,
+        ),
+      );
+      return;
+    }
+
+    emit(
+      BookingConfirmed(
+        selectedDate: current.selectedDate,
+        selectedTime: current.selectedTime,
+        selectedPackage: current.selectedPackage,
+        patientInfo: current.patientInfo,
+        selectedPaymentMethod: current.selectedPaymentMethod,
+        walletBalance: current.walletBalance,
+        savedCards: current.savedCards,
+        selectedCardId: current.selectedCardId,
+      ),
+    );
+  }
+
+  Future<void> _onStartBooking(
+    StartBookingEvent event,
+    Emitter<BookingState> emit,
+  ) async {
+    _activeDoctorId = event.doctorId;
+    _slotsCache = const [];
+
+    emit(
+      BookingInitial(
+        selectedDate: _dateOnly(event.date),
+        selectedTime: null,
+        selectedPackage: null,
+        patientInfo: null,
+        selectedPaymentMethod: null,
+        walletBalance: walletBalanceDefault,
+        savedCards: const [],
+        selectedCardId: null,
+      ),
+    );
+
+    await _onFetchAvailableSlots(
+      FetchAvailableSlots(_dateOnly(event.date), event.doctorId),
+      emit,
     );
   }
 }

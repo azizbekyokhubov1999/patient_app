@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../booking/presentation/models/booking_route_args.dart';
+import '../../../booking/presentation/utils/booking_navigation.dart';
 import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/doctor_review.dart';
 import '../../../home/domain/entities/hospital.dart';
@@ -191,9 +191,9 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
             child: SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: () => context.push(
-                  AppPaths.booking,
-                  extra: BookingRouteArgs(hospital: h),
+                onPressed: () => BookingNavigation.startBooking(
+                  context,
+                  hospital: h,
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -1114,12 +1114,10 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () =>
-                      context.push(
-                        AppPaths.booking,
-                        extra: BookingRouteArgs(
-                          hospital: widget.hospital,
-                          selectedSpecialist: doctor,
-                        ),
+                      BookingNavigation.startBooking(
+                        context,
+                        hospital: widget.hospital,
+                        selectedSpecialist: doctor,
                       ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.background,

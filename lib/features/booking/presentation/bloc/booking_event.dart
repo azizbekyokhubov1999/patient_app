@@ -55,3 +55,17 @@ class AddNewCardEvent extends BookingEvent {
 
   final CardModel card;
 }
+
+class ConfirmBookingEvent extends BookingEvent {
+  const ConfirmBookingEvent();
+}
+
+class StartBookingEvent extends BookingEvent {
+  const StartBookingEvent({
+    required this.doctorId,
+    required this.date,
+  });
+
+  final String doctorId;
+  final DateTime date;
+}

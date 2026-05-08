@@ -16,6 +16,7 @@ import '../bloc/booking_bloc.dart';
 import '../bloc/booking_event.dart';
 import '../bloc/booking_state.dart';
 import '../models/booking_route_args.dart';
+import '../utils/booking_navigation.dart';
 
 class AppointmentPage extends StatelessWidget {
   const AppointmentPage({
@@ -63,7 +64,7 @@ class AppointmentPage extends StatelessWidget {
           doctorId: resolvedDoctorId,
           initialDate: DateTime(2026, 1, 15),
         );
-        bloc.add(FetchAvailableSlots(DateTime(2026, 1, 15), resolvedDoctorId));
+        bloc.add(StartBookingEvent(doctorId: resolvedDoctorId, date: DateTime(2026, 1, 15)));
         return bloc;
       },
       child: _AppointmentView(
@@ -119,7 +120,13 @@ class _AppointmentViewState extends State<_AppointmentView> {
           backgroundColor: AppColors.white,
           appBar: _BookingAppBar(
             title: 'Book Appointment',
-            onBack: () => context.pop(),
+            onBack: () {
+              if (!context.canPop()) {
+                BookingNavigation.openAppointmentsTab(context);
+                return;
+              }
+              context.pop();
+            },
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 120),
@@ -166,15 +173,28 @@ class _AppointmentViewState extends State<_AppointmentView> {
                 ),
                 const SizedBox(height: AppSpacing.xxl),
                 Row(
-                  children: const [
-                    Text(
-                      'Select Time',
-                      style: AppTextStyles.sectionTitle,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Select Time',
+                        style: AppTextStyles.sectionTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Spacer(),
-                    _LegendDot(color: AppColors.stroke, label: 'Available'),
-                    SizedBox(width: 12),
-                    _LegendDot(color: AppColors.error, label: 'Not-Available'),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          SizedBox(width: 8),
+                          _LegendDot(color: AppColors.stroke, label: 'Available'),
+                          SizedBox(width: 12),
+                          _LegendDot(color: AppColors.error, label: 'Not-Available'),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -510,12 +530,15 @@ class _CustomCalendarGrid extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      day,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryText,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        day,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText,
+                        ),
                       ),
                     ),
                   ),
@@ -592,6 +615,8 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -647,12 +672,19 @@ class _TimeSlotGrid extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: borderColor),
             ),
-            child: Text(
-              slot.time,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: textColor,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  slot.time,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
               ),
             ),
           ),

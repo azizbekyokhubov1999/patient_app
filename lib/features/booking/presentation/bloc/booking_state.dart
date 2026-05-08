@@ -128,3 +128,45 @@ class CardAddingFailure extends BookingState {
 
   final String message;
 }
+
+class BookingConfirming extends BookingState {
+  const BookingConfirming({
+    required super.selectedDate,
+    super.selectedTime,
+    super.selectedPackage,
+    super.patientInfo,
+    super.selectedPaymentMethod,
+    required super.walletBalance,
+    super.savedCards = const [],
+    super.selectedCardId,
+  });
+}
+
+class BookingConfirmed extends BookingState {
+  const BookingConfirmed({
+    required super.selectedDate,
+    super.selectedTime,
+    super.selectedPackage,
+    super.patientInfo,
+    super.selectedPaymentMethod,
+    required super.walletBalance,
+    super.savedCards = const [],
+    super.selectedCardId,
+  });
+}
+
+class BookingConfirmFailure extends BookingState {
+  const BookingConfirmFailure({
+    required this.message,
+    required super.selectedDate,
+    super.selectedTime,
+    super.selectedPackage,
+    super.patientInfo,
+    super.selectedPaymentMethod,
+    required super.walletBalance,
+    super.savedCards = const [],
+    super.selectedCardId,
+  });
+
+  final String message;
+}

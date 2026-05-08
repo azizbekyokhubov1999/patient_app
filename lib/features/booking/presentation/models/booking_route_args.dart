@@ -108,3 +108,11 @@ class ReviewSummaryArgs {
   final String? doctorId;
   final Hospital? hospital;
 }
+
+class BookingSuccessArgs {
+  const BookingSuccessArgs({
+    required this.doctorName,
+  });
+
+  final String doctorName;
+}
