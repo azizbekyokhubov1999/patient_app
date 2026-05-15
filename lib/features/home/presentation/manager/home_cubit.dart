@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../domain/entities/appointment.dart';
+import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/doctor_review.dart';
 import '../../domain/entities/hospital.dart';
@@ -9,6 +10,7 @@ import '../../domain/entities/hospital_contact_person.dart';
 import '../../domain/entities/hospital_review.dart';
 import '../../domain/entities/service.dart';
 import '../../domain/entities/working_hours_entry.dart';
+import '../utils/home_filter_utils.dart';
 import 'home_state.dart';
 
 const String _kLoremAbout =
@@ -19,7 +21,9 @@ const String _kMapPlaceholder =
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit()
-    : super(
+    : _allDoctors = _initialDoctors,
+      _allHospitals = _initialHospitals,
+      super(
         HomeState(
           appointments: const [
             Appointment(
@@ -50,7 +54,29 @@ class HomeCubit extends Cubit<HomeState> {
             Service(title: 'Neurology', icon: LucideIcons.brain),
             Service(title: 'Orthopedic', icon: LucideIcons.bone),
           ],
-          hospitals: const [
+          hospitals: _initialHospitals,
+          doctors: _initialDoctors,
+          selectedServiceIndex: 0,
+          currentAppointmentIndex: 0,
+        ),
+      );
+
+  final List<Doctor> _allDoctors;
+  final List<Hospital> _allHospitals;
+
+  FilterResult? get currentFilter => state.activeFilter;
+
+  void applyFilters(FilterResult filter) {
+    emit(
+      state.copyWith(
+        activeFilter: filter,
+        doctors: filterDoctors(_allDoctors, filter),
+        hospitals: filterHospitals(_allHospitals, filter),
+      ),
+    );
+  }
+
+  static final List<Hospital> _initialHospitals = [
             Hospital(
               id: 'hospital-unity-health',
               name: 'Unity Health Hospital',
@@ -182,8 +208,9 @@ class HomeCubit extends Cubit<HomeState> {
               longitude: -70.2568,
               mapImageUrl: _kMapPlaceholder,
             ),
-          ],
-          doctors: const [
+          ];
+
+  static final List<Doctor> _initialDoctors = [
             Doctor(
               name: 'Dr. Jenny William',
               specialty: 'Dentist',
@@ -316,11 +343,7 @@ class HomeCubit extends Cubit<HomeState> {
               mapImageUrl: _kMapPlaceholder,
               patientReviews: <DoctorReview>[],
             ),
-          ],
-          selectedServiceIndex: 0,
-          currentAppointmentIndex: 0,
-        ),
-      );
+          ];
 
   void selectService(int index) {
     emit(state.copyWith(selectedServiceIndex: index));

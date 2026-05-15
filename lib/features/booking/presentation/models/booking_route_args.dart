@@ -4,6 +4,7 @@ import '../../domain/entities/package_type.dart';
 import '../../domain/entities/payment_method_type.dart';
 import '../../domain/entities/patient_info.dart';
 import '../../domain/entities/card_model.dart';
+import 'e_receipt_args.dart';
 
 class BookingRouteArgs {
   const BookingRouteArgs({
@@ -112,7 +113,9 @@ class ReviewSummaryArgs {
 class BookingSuccessArgs {
   const BookingSuccessArgs({
     required this.doctorName,
+    required this.receipt,
   });
 
   final String doctorName;
+  final EReceiptArgs receipt;
 }

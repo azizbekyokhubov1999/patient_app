@@ -13,6 +13,8 @@ abstract final class AppPaths {
   static const String enterLocation = '/enter-location';
   static const String notificationAccess = '/notification-access';
 
+  static const String search = '/search';
+  static const String filter = '/filter';
   static const String home = '/home';
   static const String explore = '/explore';
   static const String booking = '/booking';

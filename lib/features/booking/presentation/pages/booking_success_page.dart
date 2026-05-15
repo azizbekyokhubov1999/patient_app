@@ -7,14 +7,17 @@ import '../../../../core/constants/app_paths.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../models/e_receipt_args.dart';
 
 class BookingSuccessPage extends StatefulWidget {
   const BookingSuccessPage({
     required this.doctorName,
+    required this.receipt,
     super.key,
   });
 
   final String doctorName;
+  final EReceiptArgs receipt;
 
   @override
   State<BookingSuccessPage> createState() => _BookingSuccessPageState();
@@ -149,7 +152,7 @@ class _BookingSuccessPageState extends State<BookingSuccessPage> {
                         width: double.infinity,
                         height: 54,
                         child: ElevatedButton(
-                          onPressed: () => context.push(AppPaths.eReceipt),
+                          onPressed: () => context.push(AppPaths.eReceipt, extra: widget.receipt),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: AppColors.white,

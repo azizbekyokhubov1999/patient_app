@@ -1,5 +1,6 @@
 import '../../domain/entities/appointment.dart';
 import '../../domain/entities/doctor.dart';
+import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
 import '../../domain/entities/service.dart';
 
@@ -11,6 +12,7 @@ class HomeState {
     required this.doctors,
     required this.selectedServiceIndex,
     required this.currentAppointmentIndex,
+    this.activeFilter,
   });
 
   final List<Appointment> appointments;
@@ -19,6 +21,7 @@ class HomeState {
   final List<Doctor> doctors;
   final int selectedServiceIndex;
   final int currentAppointmentIndex;
+  final FilterResult? activeFilter;
 
   HomeState copyWith({
     List<Appointment>? appointments,
@@ -27,6 +30,7 @@ class HomeState {
     List<Doctor>? doctors,
     int? selectedServiceIndex,
     int? currentAppointmentIndex,
+    FilterResult? activeFilter,
   }) {
     return HomeState(
       appointments: appointments ?? this.appointments,
@@ -36,6 +40,7 @@ class HomeState {
       selectedServiceIndex: selectedServiceIndex ?? this.selectedServiceIndex,
       currentAppointmentIndex:
           currentAppointmentIndex ?? this.currentAppointmentIndex,
+      activeFilter: activeFilter ?? this.activeFilter,
     );
   }
 }

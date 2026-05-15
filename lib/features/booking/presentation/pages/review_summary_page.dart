@@ -19,6 +19,7 @@ import '../bloc/booking_bloc.dart';
 import '../bloc/booking_event.dart';
 import '../bloc/booking_state.dart';
 import '../models/booking_route_args.dart';
+import '../models/e_receipt_mapper.dart';
 import '../utils/booking_navigation.dart';
 
 void _popOrExitBooking(BuildContext context) {
@@ -156,11 +157,18 @@ class _AppointmentOverviewViewState extends State<_AppointmentOverviewView> {
         }
         if (state is BookingConfirmed) {
           final doctorName = widget.args.doctor?.name ?? 'Dr. Jenny William';
+          final receipt = buildEReceiptArgsFromReviewSummary(
+            widget.args,
+            discount: _discount,
+          );
           SchedulerBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             context.go(
               AppPaths.bookingSuccess,
-              extra: BookingSuccessArgs(doctorName: doctorName),
+              extra: BookingSuccessArgs(
+                doctorName: doctorName,
+                receipt: receipt,
+              ),
             );
           });
         }
@@ -361,6 +369,7 @@ class _AppointmentOverviewViewState extends State<_AppointmentOverviewView> {
                                 ),
                               ),
                               SizedBox(
+                                width: 90,
                                 height: 38,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(

@@ -7,7 +7,9 @@ import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/entities/doctor.dart';
+import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
+import '../models/filter_args.dart';
 import '../manager/home_cubit.dart';
 import '../manager/home_state.dart';
 
@@ -313,26 +315,59 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ],
             ),
-            child: TextField(
-              readOnly: true,
-              decoration: InputDecoration(
-                hintText: 'Search',
-                hintStyle: textTheme.bodyMedium?.copyWith(
-                  color: AppColors.secondaryText,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => context.push(AppPaths.search),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Row(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              LucideIcons.search,
+                              color: AppColors.secondaryText,
+                              size: 22,
+                            ),
+                          ),
+                          Text(
+                            'Search',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                prefixIcon: const Icon(
-                  LucideIcons.search,
-                  color: AppColors.secondaryText,
-                  size: 22,
+                GestureDetector(
+                  onTap: () async {
+                    final homeCubit = context.read<HomeCubit>();
+                    final current = homeCubit.currentFilter ?? FilterResult.defaults();
+                    final result = await context.push<FilterResult>(
+                      AppPaths.filter,
+                      extra: FilterArgs(initialFilter: current),
+                    );
+                    if (result != null && context.mounted) {
+                      homeCubit.applyFilters(result);
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Icon(
+                      LucideIcons.slidersHorizontal,
+                      color: AppColors.primaryText,
+                      size: 22,
+                    ),
+                  ),
                 ),
-                suffixIcon: const Icon(
-                  LucideIcons.slidersHorizontal,
-                  color: AppColors.primaryText,
-                  size: 22,
-                ),
-              ),
+              ],
             ),
           ),
         ),

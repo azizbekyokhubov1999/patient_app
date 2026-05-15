@@ -18,6 +18,7 @@ import '../../features/booking/presentation/pages/add_card_page.dart';
 import '../../features/booking/presentation/pages/appointments_page.dart';
 import '../../features/booking/presentation/pages/patient_details_page.dart';
 import '../../features/booking/presentation/pages/booking_success_page.dart';
+import '../../features/booking/presentation/models/e_receipt_args.dart';
 import '../../features/booking/presentation/pages/e_receipt_page.dart';
 import '../../features/booking/presentation/pages/payment_methods_page.dart';
 import '../../features/booking/presentation/pages/review_summary_page.dart';
@@ -31,6 +32,10 @@ import '../../features/home/domain/entities/hospital.dart';
 import '../../features/home/presentation/pages/doctor_details_page.dart';
 import '../../features/home/presentation/pages/leave_review_doctor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/home/presentation/pages/filter_page.dart';
+import '../../features/home/presentation/pages/search_page.dart';
+import '../../features/home/presentation/models/filter_args.dart';
+import '../../features/home/domain/entities/filter_result.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../constants/app_paths.dart';
@@ -90,6 +95,23 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.auth,
         builder: (context, state) => const SignInPage(),
+      ),
+      GoRoute(
+        path: AppPaths.search,
+        builder: (context, state) => const SearchPage(),
+      ),
+      GoRoute(
+        path: AppPaths.filter,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is FilterArgs) {
+            return FilterPage(args: extra);
+          }
+          if (extra is FilterResult) {
+            return FilterPage(args: FilterArgs(initialFilter: extra));
+          }
+          return const FilterPage();
+        },
       ),
       GoRoute(
         path: AppPaths.doctorDetails,
@@ -275,16 +297,46 @@ abstract final class AppRouter {
         builder: (context, state) {
           final extra = state.extra;
           if (extra is! BookingSuccessArgs) {
-            return const BookingSuccessPage(
+            return BookingSuccessPage(
               doctorName: 'Dr. Jenny William',
+              receipt: EReceiptArgs(
+                appointmentId: '#DC000000',
+                patientName: 'Patient',
+                patientPhone: '+1 (208) 555-0112',
+                doctorName: 'Dr. Jenny William',
+                packageType: 'Messaging',
+                packageDuration: '30 minutes',
+                bookingDate: DateTime.now(),
+                bookingTime: '11:00',
+                subTotal: 20,
+                discount: 0,
+                totalAmount: 20,
+              ),
             );
           }
-          return BookingSuccessPage(doctorName: extra.doctorName);
+          return BookingSuccessPage(
+            doctorName: extra.doctorName,
+            receipt: extra.receipt,
+          );
         },
       ),
       GoRoute(
         path: AppPaths.eReceipt,
-        builder: (context, state) => const EReceiptPage(),
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! EReceiptArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Receipt data not found')),
+            );
+          }
+          return EReceiptPage(args: extra);
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
