@@ -471,6 +471,7 @@ void _openGetDirection(BuildContext context, Hospital hospital) {
       hospitalId: hospital.id,
       hospitalName: hospital.name,
       geoPoint: hospital.geoPoint,
+      hospitalAddress: hospital.address,
     ),
   );
 }

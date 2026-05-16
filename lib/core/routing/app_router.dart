@@ -28,11 +28,13 @@ import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
 import '../../features/home/presentation/manager/get_direction_args.dart';
+import '../../features/home/presentation/manager/get_direction_2_cubit.dart';
 import '../../features/home/presentation/manager/get_direction_cubit.dart';
 import '../../features/home/presentation/manager/nearby_hospitals_cubit.dart';
 import '../../features/home/presentation/models/hospital_detail_args.dart';
+import '../../features/home/presentation/pages/get_direction_2_page.dart';
 import '../../features/home/presentation/pages/get_direction_page.dart';
-import '../../features/home/presentation/pages/get_direction_step2_page.dart';
+import '../../features/home/presentation/pages/you_have_arrived_page.dart';
 import '../../features/home/presentation/pages/nearby_hospitals_page.dart';
 import '../../features/explore/presentation/pages/leave_review_hospital_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
@@ -188,10 +190,29 @@ abstract final class AppRouter {
         path: AppPaths.getDirection2,
         builder: (context, state) {
           final extra = state.extra;
-          return GetDirectionStep2Page(
-            args: extra is GetDirectionArgs ? extra : null,
+          if (extra is! GetDirectionArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Route not available')),
+            );
+          }
+          return BlocProvider(
+            create: (_) => GetDirection2Cubit(extra)..initialize(),
+            child: GetDirection2Page(args: extra),
           );
         },
+      ),
+      GoRoute(
+        path: AppPaths.youHaveArrived,
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const YouHaveArrivedPage(),
+        ),
       ),
       GoRoute(
         path: AppPaths.hospitalDetail,

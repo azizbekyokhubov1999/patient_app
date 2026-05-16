@@ -53,10 +53,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
       ),
-      title: Text(
-        title,
-        style: AppTextStyles.titleMedium,
-      ),
+      title: title.isEmpty
+          ? null
+          : Text(
+              title,
+              style: AppTextStyles.titleMedium,
+            ),
       actions: actions,
     );
   }

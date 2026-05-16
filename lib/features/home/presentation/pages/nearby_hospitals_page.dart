@@ -228,6 +228,7 @@ class _HospitalList extends StatelessWidget {
                 hospitalId: hospital.id,
                 hospitalName: hospital.name,
                 geoPoint: hospital.geoPoint,
+                hospitalAddress: hospital.address,
               ),
             ),
           );
