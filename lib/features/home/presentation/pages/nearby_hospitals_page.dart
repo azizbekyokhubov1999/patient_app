@@ -7,7 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/get_direction_args.dart';
+import '../manager/get_direction_args.dart';
 import '../../domain/entities/hospital.dart';
 import '../manager/nearby_hospitals_cubit.dart';
 import '../manager/nearby_hospitals_state.dart';

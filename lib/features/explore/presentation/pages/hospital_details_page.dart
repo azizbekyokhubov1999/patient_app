@@ -12,6 +12,7 @@ import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_contact_person.dart';
 import '../../../home/domain/entities/working_hours_entry.dart';
 import '../../../home/domain/entities/hospital_review.dart';
+import '../../../home/presentation/manager/get_direction_args.dart';
 import '../manager/hospital_details_cubit.dart';
 import '../manager/hospital_details_state.dart';
 
@@ -463,6 +464,17 @@ class _HeaderInfo extends StatelessWidget {
   }
 }
 
+void _openGetDirection(BuildContext context, Hospital hospital) {
+  context.push(
+    AppPaths.getDirection,
+    extra: GetDirectionArgs(
+      hospitalId: hospital.id,
+      hospitalName: hospital.name,
+      geoPoint: hospital.geoPoint,
+    ),
+  );
+}
+
 class _ActionRow extends StatelessWidget {
   const _ActionRow({required this.hospital});
 
@@ -483,7 +495,7 @@ class _ActionRow extends StatelessWidget {
           _ActionItem(
             icon: LucideIcons.map,
             label: 'Direction',
-            onTap: () => debugPrint('Directions: ${hospital.name}'),
+            onTap: () => _openGetDirection(context, hospital),
           ),
           _ActionItem(
             icon: LucideIcons.messageSquare,
@@ -684,7 +696,7 @@ class _AboutTab extends StatelessWidget {
               ),
               const Spacer(),
               GestureDetector(
-                onTap: () => debugPrint('View on map: ${hospital.name}'),
+                onTap: () => _openGetDirection(context, hospital),
                 child: Text(
                   'View on Map',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -717,7 +729,9 @@ class _AboutTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ClipRRect(
+          GestureDetector(
+            onTap: () => _openGetDirection(context, hospital),
+            child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: SizedBox(
               height: 170,
@@ -754,6 +768,7 @@ class _AboutTab extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         ],
       ),

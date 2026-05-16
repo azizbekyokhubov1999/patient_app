@@ -27,10 +27,12 @@ import '../../features/booking/presentation/pages/select_package_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
-import '../../features/home/domain/entities/get_direction_args.dart';
+import '../../features/home/presentation/manager/get_direction_args.dart';
+import '../../features/home/presentation/manager/get_direction_cubit.dart';
 import '../../features/home/presentation/manager/nearby_hospitals_cubit.dart';
 import '../../features/home/presentation/models/hospital_detail_args.dart';
 import '../../features/home/presentation/pages/get_direction_page.dart';
+import '../../features/home/presentation/pages/get_direction_step2_page.dart';
 import '../../features/home/presentation/pages/nearby_hospitals_page.dart';
 import '../../features/explore/presentation/pages/leave_review_hospital_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
@@ -176,7 +178,19 @@ abstract final class AppRouter {
               body: const Center(child: Text('Directions not available')),
             );
           }
-          return GetDirectionPage(args: extra);
+          return BlocProvider(
+            create: (_) => GetDirectionCubit()..loadMapData(extra.geoPoint),
+            child: GetDirectionPage(args: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.getDirection2,
+        builder: (context, state) {
+          final extra = state.extra;
+          return GetDirectionStep2Page(
+            args: extra is GetDirectionArgs ? extra : null,
+          );
         },
       ),
       GoRoute(

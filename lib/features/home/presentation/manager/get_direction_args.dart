@@ -1,6 +1,8 @@
-/// Arguments for future in-app directions / navigation flow.
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Navigation payload for the Get Direction flow.
 class GetDirectionArgs {
-  const GetDirectionArgs({
+  GetDirectionArgs({
     required this.hospitalId,
     required this.hospitalName,
     required this.geoPoint,
@@ -8,5 +10,5 @@ class GetDirectionArgs {
 
   final String hospitalId;
   final String hospitalName;
-  final dynamic geoPoint;
+  final GeoPoint geoPoint;
 }

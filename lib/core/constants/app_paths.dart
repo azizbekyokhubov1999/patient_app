@@ -19,6 +19,7 @@ abstract final class AppPaths {
   static const String appointmentDetail = '/appointment-detail';
   static const String nearbyHospitals = '/nearby-hospitals';
   static const String getDirection = '/get-direction';
+  static const String getDirection2 = '/get-direction-2';
   static const String hospitalDetail = '/hospital-detail';
   static const String filter = '/filter';
   static const String home = '/home';
