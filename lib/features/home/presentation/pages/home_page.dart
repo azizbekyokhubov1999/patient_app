@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,10 +7,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../notification/presentation/manager/notification_cubit.dart';
+import '../../../notification/presentation/manager/notification_state.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
+import '../../domain/entities/service_category.dart';
 import '../models/filter_args.dart';
 import '../manager/home_cubit.dart';
 import '../manager/home_state.dart';
@@ -54,8 +59,7 @@ class _HomePageState extends State<HomePage> {
                     delegate: SliverChildListDelegate([
                       _SectionTitle(
                         title: 'Upcoming Appointment',
-                        onTapSeeAll: () =>
-                            debugPrint('Upcoming see all tapped'),
+                        onTapSeeAll: () => context.push(AppPaths.upcomingAppointments),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -83,8 +87,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 20),
                       _SectionTitle(
                         title: 'Services',
-                        onTapSeeAll: () =>
-                            debugPrint('Services see all tapped'),
+                        onTapSeeAll: () => unawaited(_openServices(context)),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -144,7 +147,7 @@ class _HomePageState extends State<HomePage> {
                       _SectionTitle(
                         title: 'Nearby Hospitals',
                         onTapSeeAll: () =>
-                            debugPrint('Hospitals see all tapped'),
+                            context.push(AppPaths.nearbyHospitals),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -168,8 +171,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 22),
                       _SectionTitle(
                         title: 'Top Specialist',
-                        onTapSeeAll: () =>
-                            debugPrint('Top specialists see all tapped'),
+                        onTapSeeAll: () => context.push(AppPaths.topSpecialist),
                       ),
                       const SizedBox(height: 12),
                       GridView.builder(
@@ -202,6 +204,14 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  Future<void> _openServices(BuildContext context) async {
+    final selected = await context.push<ServiceCategory>(AppPaths.services);
+    if (!context.mounted) return;
+    if (selected != null) {
+      context.read<HomeCubit>().filterByServiceCategory(selected);
+    }
   }
 }
 
@@ -262,39 +272,39 @@ class _HomeHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              InkWell(
-                onTap: () => debugPrint('Notification icon tapped'),
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
+              BlocBuilder<NotificationCubit, NotificationState>(
+                builder: (context, notifState) {
+                  final count = notifState.unreadCount;
+                  return InkWell(
+                    onTap: () => context.push(AppPaths.notifications),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Badge(
+                      isLabelVisible: count > 0,
+                      backgroundColor: AppColors.error,
+                      label: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      child: const Icon(
-                        LucideIcons.bell,
-                        color: AppColors.white,
-                        size: 22,
-                      ),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
                       child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.error,
-                          shape: BoxShape.circle,
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          LucideIcons.bell,
+                          color: AppColors.white,
+                          size: 22,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),

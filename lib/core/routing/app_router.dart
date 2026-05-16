@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/complete_profile_page.dart';
@@ -26,6 +27,11 @@ import '../../features/booking/presentation/pages/select_package_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
+import '../../features/home/domain/entities/get_direction_args.dart';
+import '../../features/home/presentation/manager/nearby_hospitals_cubit.dart';
+import '../../features/home/presentation/models/hospital_detail_args.dart';
+import '../../features/home/presentation/pages/get_direction_page.dart';
+import '../../features/home/presentation/pages/nearby_hospitals_page.dart';
 import '../../features/explore/presentation/pages/leave_review_hospital_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
 import '../../features/home/domain/entities/hospital.dart';
@@ -34,9 +40,17 @@ import '../../features/home/presentation/pages/leave_review_doctor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/filter_page.dart';
 import '../../features/home/presentation/pages/search_page.dart';
+import '../../features/home/presentation/pages/services_page.dart';
+import '../../features/home/presentation/manager/top_specialist_cubit.dart';
+import '../../features/home/presentation/pages/top_specialist_page.dart';
+import '../../features/home/presentation/manager/upcoming_appointment_cubit.dart';
+import '../../features/home/presentation/models/appointment_detail_args.dart';
+import '../../features/home/presentation/pages/appointment_detail_page.dart';
+import '../../features/home/presentation/pages/upcoming_appointment_page.dart';
 import '../../features/home/presentation/models/filter_args.dart';
 import '../../features/home/domain/entities/filter_result.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
+import '../../features/notification/presentation/pages/notification_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../constants/app_paths.dart';
 
@@ -99,6 +113,95 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.search,
         builder: (context, state) => const SearchPage(),
+      ),
+      GoRoute(
+        path: AppPaths.services,
+        builder: (context, state) => const ServicesPage(),
+      ),
+      GoRoute(
+        path: AppPaths.topSpecialist,
+        builder: (context, state) {
+          final specialty = state.extra as String?;
+          return BlocProvider(
+            create: (_) => TopSpecialistCubit(initialSpecialty: specialty)
+              ..loadTopSpecialists(),
+            child: TopSpecialistPage(initialSpecialty: specialty),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.upcomingAppointments,
+        builder: (context, state) => BlocProvider(
+          create: (_) => UpcomingAppointmentCubit()..loadUpcomingAppointments(),
+          child: const UpcomingAppointmentPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.appointmentDetail,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! AppointmentDetailArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Appointment not found')),
+            );
+          }
+          return AppointmentDetailPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.nearbyHospitals,
+        builder: (context, state) => BlocProvider(
+          create: (_) => NearbyHospitalsCubit()..loadNearbyHospitals(),
+          child: const NearbyHospitalsPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.getDirection,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! GetDirectionArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Directions not available')),
+            );
+          }
+          return GetDirectionPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.hospitalDetail,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! HospitalDetailArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Hospital not found')),
+            );
+          }
+          final hospital = extra.hospital ??
+              HospitalDetailsPage.fallbackById(extra.hospitalId);
+          return HospitalDetailsPage(hospital: hospital);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.notifications,
+        builder: (context, state) => const NotificationPage(),
       ),
       GoRoute(
         path: AppPaths.filter,

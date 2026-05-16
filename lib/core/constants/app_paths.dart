@@ -14,6 +14,12 @@ abstract final class AppPaths {
   static const String notificationAccess = '/notification-access';
 
   static const String search = '/search';
+  static const String services = '/services';
+  static const String upcomingAppointments = '/upcoming-appointments';
+  static const String appointmentDetail = '/appointment-detail';
+  static const String nearbyHospitals = '/nearby-hospitals';
+  static const String getDirection = '/get-direction';
+  static const String hospitalDetail = '/hospital-detail';
   static const String filter = '/filter';
   static const String home = '/home';
   static const String explore = '/explore';
@@ -29,8 +35,23 @@ abstract final class AppPaths {
   static const String chat = '/chat';
   static const String profile = '/profile';
 
+  static const String notifications = '/notifications';
+
   static const String doctorDetails = '/doctor-details';
+  static const String topSpecialist = '/top-specialist';
+
+  /// Alias of [doctorDetails] for navigation with `extra: Doctor`.
+  static const String doctorDetail = doctorDetails;
   static const String leaveReviewDoctor = '/leave-review-doctor';
   static const String leaveReviewHospital = '/leave-review-hospital';
   static const String hospitalDetails = '/hospital-details';
+
+  /// Appointments tab route (same as [booking]).
+  static const String appointments = booking;
+
+  /// Leave review for a doctor (same as [leaveReviewDoctor]).
+  static const String leaveReview = leaveReviewDoctor;
+
+  /// Payment methods during booking (same as [paymentMethod]).
+  static const String paymentMethods = paymentMethod;
 }

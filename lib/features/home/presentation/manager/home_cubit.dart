@@ -9,6 +9,7 @@ import '../../domain/entities/hospital.dart';
 import '../../domain/entities/hospital_contact_person.dart';
 import '../../domain/entities/hospital_review.dart';
 import '../../domain/entities/service.dart';
+import '../../domain/entities/service_category.dart';
 import '../../domain/entities/working_hours_entry.dart';
 import '../utils/home_filter_utils.dart';
 import 'home_state.dart';
@@ -74,6 +75,11 @@ class HomeCubit extends Cubit<HomeState> {
         hospitals: filterHospitals(_allHospitals, filter),
       ),
     );
+  }
+
+  void filterByServiceCategory(ServiceCategory category) {
+    final base = currentFilter ?? FilterResult.defaults();
+    applyFilters(base.copyWith(specialist: category.name));
   }
 
   static final List<Hospital> _initialHospitals = [

@@ -1,14 +1,18 @@
-//import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_cubit.dart';
+import 'features/notification/data/datasources/notification_remote_data_source.dart';
+import 'features/notification/data/repositories/notification_repository_impl.dart';
+import 'features/notification/presentation/manager/notification_cubit.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
- // await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const PatientApp());
 }
 
@@ -21,6 +25,11 @@ class PatientApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthCubit>(
           create: (context) => AuthCubit(),
+        ),
+        BlocProvider<NotificationCubit>(
+          create: (context) => NotificationCubit(
+            NotificationRepositoryImpl(NotificationRemoteDataSourceImpl()),
+          )..loadNotifications(),
         ),
       ],
       child: MaterialApp.router(
