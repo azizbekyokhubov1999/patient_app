@@ -25,7 +25,10 @@ abstract final class AppPaths {
   static const String filter = '/filter';
   static const String home = '/home';
   static const String explore = '/explore';
-  static const String booking = '/booking';
+  static const String appointments = '/appointments';
+
+  /// Legacy alias — same tab route as [appointments].
+  static const String booking = appointments;
   static const String bookAppointment = '/book-appointment';
   static const String selectPackage = '/booking/select-package';
   static const String patientDetails = '/booking/patient-details';
@@ -34,6 +37,8 @@ abstract final class AppPaths {
   static const String reviewSummary = '/booking/review-summary';
   static const String bookingSuccess = '/booking/success';
   static const String eReceipt = '/booking/e-receipt';
+  static const String cancelBooking = '/cancel-booking';
+  static const String consultationEnded = '/consultation-ended';
   static const String chat = '/chat';
   static const String profile = '/profile';
 
@@ -47,9 +52,6 @@ abstract final class AppPaths {
   static const String leaveReviewDoctor = '/leave-review-doctor';
   static const String leaveReviewHospital = '/leave-review-hospital';
   static const String hospitalDetails = '/hospital-details';
-
-  /// Appointments tab route (same as [booking]).
-  static const String appointments = booking;
 
   /// Leave review for a doctor (same as [leaveReviewDoctor]).
   static const String leaveReview = leaveReviewDoctor;

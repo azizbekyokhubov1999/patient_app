@@ -16,7 +16,14 @@ import '../../features/auth/presentation/pages/your_location_page.dart';
 import '../../features/booking/presentation/models/booking_route_args.dart';
 import '../../features/booking/presentation/pages/appointment_page.dart';
 import '../../features/booking/presentation/pages/add_card_page.dart';
+import '../../features/booking/presentation/manager/cancel_booking_cubit.dart';
+import '../../features/booking/presentation/manager/cancelled_appointments_cubit.dart';
+import '../../features/booking/presentation/manager/completed_appointments_cubit.dart';
+import '../../features/booking/presentation/manager/upcoming_appointments_cubit.dart';
 import '../../features/booking/presentation/pages/appointments_page.dart';
+import '../../features/booking/presentation/pages/cancel_booking_page.dart';
+import '../../features/booking/presentation/pages/consultation_ended_page.dart';
+import '../../features/booking/presentation/models/consultation_ended_args.dart';
 import '../../features/booking/presentation/pages/patient_details_page.dart';
 import '../../features/booking/presentation/pages/booking_success_page.dart';
 import '../../features/booking/presentation/models/e_receipt_args.dart';
@@ -38,7 +45,9 @@ import '../../features/home/presentation/pages/you_have_arrived_page.dart';
 import '../../features/home/presentation/pages/nearby_hospitals_page.dart';
 import '../../features/explore/presentation/pages/leave_review_hospital_page.dart';
 import '../../features/home/domain/entities/doctor.dart';
+import '../../features/home/domain/entities/doctor_review.dart';
 import '../../features/home/domain/entities/hospital.dart';
+import '../../features/home/domain/entities/working_hours_entry.dart';
 import '../../features/home/presentation/pages/doctor_details_page.dart';
 import '../../features/home/presentation/pages/leave_review_doctor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
@@ -315,18 +324,27 @@ abstract final class AppRouter {
         path: AppPaths.leaveReviewDoctor,
         builder: (context, state) {
           final extra = state.extra;
-          if (extra is! Doctor) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('Doctor not found')),
+          if (extra is Doctor) {
+            return LeaveReviewDoctorPage(doctor: extra);
+          }
+          if (extra is Map<String, dynamic>) {
+            final doctor = extra['doctor'];
+            if (doctor is Doctor) {
+              return LeaveReviewDoctorPage(doctor: doctor);
+            }
+            return LeaveReviewDoctorPage(
+              doctor: _doctorFromLeaveReviewArgs(extra),
             );
           }
-          return LeaveReviewDoctorPage(doctor: extra);
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            body: const Center(child: Text('Doctor not found')),
+          );
         },
       ),
       GoRoute(
@@ -476,6 +494,34 @@ abstract final class AppRouter {
           return EReceiptPage(args: extra);
         },
       ),
+      GoRoute(
+        path: AppPaths.cancelBooking,
+        builder: (context, state) {
+          final appointmentId = state.extra as String? ?? '';
+          return BlocProvider(
+            create: (_) => CancelBookingCubit(),
+            child: CancelBookingPage(appointmentId: appointmentId),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.consultationEnded,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ConsultationEndedArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.go(AppPaths.home),
+                ),
+              ),
+              body: const Center(child: Text('Consultation data not found')),
+            );
+          }
+          return ConsultationEndedPage(args: extra);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainWrapperPage(navigationShell: navigationShell);
@@ -500,8 +546,27 @@ abstract final class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppPaths.booking,
-                builder: (context, state) => const AppointmentsPage(),
+                path: AppPaths.appointments,
+                builder: (context, state) {
+                  final tabIndex = state.extra is int ? state.extra as int : 0;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => UpcomingAppointmentsCubit()
+                          ..fetchUpcomingAppointments(),
+                      ),
+                      BlocProvider(
+                        create: (_) => CompletedAppointmentsCubit()
+                          ..fetchCompletedAppointments(),
+                      ),
+                      BlocProvider(
+                        create: (_) => CancelledAppointmentsCubit()
+                          ..fetchCancelledAppointments(),
+                      ),
+                    ],
+                    child: AppointmentsPage(initialTabIndex: tabIndex),
+                  );
+                },
               ),
             ],
           ),
@@ -524,5 +589,29 @@ abstract final class AppRouter {
         ],
       ),
     ],
+  );
+}
+
+Doctor _doctorFromLeaveReviewArgs(Map<String, dynamic> args) {
+  final doctor = args['doctor'];
+  if (doctor is Doctor) return doctor;
+
+  return Doctor(
+    id: args['doctorId'] as String?,
+    name: args['doctorName'] as String? ?? 'Doctor',
+    specialty: args['doctorSpecialty'] as String? ?? '',
+    rating: (args['doctorRating'] as num?)?.toDouble() ?? 0,
+    reviewsCount: 0,
+    imageUrl: args['doctorImageUrl'] as String? ?? '',
+    about: '',
+    patientsCount: 0,
+    experienceYears: 0,
+    workingHours: const [
+      WorkingHoursEntry('Monday - Friday', '09:00 am - 06:00 pm'),
+    ],
+    address: '',
+    latitude: 0,
+    longitude: 0,
+    patientReviews: const <DoctorReview>[],
   );
 }

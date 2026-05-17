@@ -23,6 +23,12 @@ abstract final class AppTextStyles {
     height: 1.2,
   );
 
+  static const TextStyle headlineSmall = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primaryText,
+  );
+
   static const TextStyle titleMedium = TextStyle(
     fontSize: 34 / 2,
     fontWeight: FontWeight.w700,
