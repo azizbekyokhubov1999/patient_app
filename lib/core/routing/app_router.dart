@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +32,15 @@ import '../../features/booking/presentation/pages/e_receipt_page.dart';
 import '../../features/booking/presentation/pages/payment_methods_page.dart';
 import '../../features/booking/presentation/pages/review_summary_page.dart';
 import '../../features/booking/presentation/pages/select_package_page.dart';
-import '../../features/chat/presentation/pages/chat_page.dart';
+import '../../features/chat/data/models/chat_model.dart';
+import '../../features/chat/presentation/manager/chat_cubit.dart';
+import '../../features/chat/presentation/manager/call_cubit.dart';
+import '../../features/chat/presentation/manager/chat_detail_cubit.dart';
+import '../../features/chat/presentation/models/call_session_args.dart';
+import '../../features/chat/presentation/pages/chat_detail_page.dart';
+import '../../features/chat/presentation/pages/chat_list_page.dart';
+import '../../features/chat/presentation/pages/video_call_page.dart';
+import '../../features/chat/presentation/pages/voice_call_page.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/explore/presentation/pages/hospital_details_page.dart';
 import '../../features/home/presentation/manager/get_direction_args.dart';
@@ -522,6 +531,70 @@ abstract final class AppRouter {
           return ConsultationEndedPage(args: extra);
         },
       ),
+      GoRoute(
+        path: AppPaths.chatDetail,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ChatModel) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Chat not found')),
+            );
+          }
+          final uid =
+              FirebaseAuth.instance.currentUser?.uid ?? 'patient-demo';
+          return BlocProvider(
+            create: (_) => ChatDetailCubit(
+              currentUserId: uid,
+              currentUserName: 'Jennifer Aaker',
+              peerId: extra.doctorId,
+              peerName: extra.doctorName,
+            )..listenToMessages(extra.chatId),
+            child: ChatDetailPage(chat: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.videoCall,
+        builder: (context, state) {
+          final args = _resolveCallSessionArgs(
+            state.extra,
+            defaultVideo: true,
+          );
+          return BlocProvider(
+            create: (_) => CallCubit(
+              initialVideoOn: args.initialVideoOn,
+              initialDurationSeconds: args.initialDurationSeconds,
+              initialMuted: args.initialMuted,
+              initialSpeakerOn: args.initialSpeakerOn,
+            ),
+            child: VideoCallPage(args: args),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.voiceCall,
+        builder: (context, state) {
+          final args = _resolveCallSessionArgs(
+            state.extra,
+            defaultVideo: false,
+          );
+          return BlocProvider(
+            create: (_) => CallCubit(
+              initialVideoOn: args.initialVideoOn,
+              initialDurationSeconds: args.initialDurationSeconds,
+              initialMuted: args.initialMuted,
+              initialSpeakerOn: args.initialSpeakerOn,
+            ),
+            child: VoiceCallPage(args: args),
+          );
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainWrapperPage(navigationShell: navigationShell);
@@ -574,7 +647,10 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: AppPaths.chat,
-                builder: (context, state) => const ChatPage(),
+                builder: (context, state) => BlocProvider(
+                  create: (_) => ChatCubit()..streamChats(),
+                  child: const ChatListPage(),
+                ),
               ),
             ],
           ),
@@ -589,6 +665,24 @@ abstract final class AppRouter {
         ],
       ),
     ],
+  );
+}
+
+CallSessionArgs _resolveCallSessionArgs(
+  Object? extra, {
+  required bool defaultVideo,
+}) {
+  if (extra is CallSessionArgs) return extra;
+  if (extra is ChatModel) {
+    return CallSessionArgs.fromChat(extra, video: defaultVideo);
+  }
+  return CallSessionArgs(
+    appointmentId: 'call-demo',
+    doctorId: 'doc-sheila',
+    doctorName: 'Dr. Sheila Lemke',
+    doctorSpecialty: 'Dentist',
+    doctorAvatar: 'https://picsum.photos/200?sheila',
+    initialVideoOn: defaultVideo,
   );
 }
 

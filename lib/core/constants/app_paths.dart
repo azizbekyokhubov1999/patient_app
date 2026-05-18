@@ -40,6 +40,9 @@ abstract final class AppPaths {
   static const String cancelBooking = '/cancel-booking';
   static const String consultationEnded = '/consultation-ended';
   static const String chat = '/chat';
+  static const String chatDetail = '/chat-detail';
+  static const String videoCall = '/video-call';
+  static const String voiceCall = '/voice-call';
   static const String profile = '/profile';
 
   static const String notifications = '/notifications';
