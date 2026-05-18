@@ -73,7 +73,9 @@ import '../../features/home/presentation/models/filter_args.dart';
 import '../../features/home/domain/entities/filter_result.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
 import '../../features/notification/presentation/pages/notification_page.dart';
+import '../../features/profile/presentation/manager/profile_cubit.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/your_profile_page.dart';
 import '../constants/app_paths.dart';
 
 abstract final class AppRouter {
@@ -514,6 +516,13 @@ abstract final class AppRouter {
         },
       ),
       GoRoute(
+        path: AppPaths.editProfile,
+        builder: (context, state) => BlocProvider(
+          create: (_) => ProfileCubit()..loadUserProfile(),
+          child: const YourProfilePage(),
+        ),
+      ),
+      GoRoute(
         path: AppPaths.consultationEnded,
         builder: (context, state) {
           final extra = state.extra;
@@ -658,7 +667,10 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: AppPaths.profile,
-                builder: (context, state) => const ProfilePage(),
+                builder: (context, state) => BlocProvider(
+                  create: (_) => ProfileCubit()..loadUserProfile(),
+                  child: const ProfilePage(),
+                ),
               ),
             ],
           ),

@@ -44,6 +44,7 @@ abstract final class AppPaths {
   static const String videoCall = '/video-call';
   static const String voiceCall = '/voice-call';
   static const String profile = '/profile';
+  static const String editProfile = '/profile/edit';
 
   static const String notifications = '/notifications';
 
