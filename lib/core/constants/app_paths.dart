@@ -30,6 +30,9 @@ abstract final class AppPaths {
   /// Legacy alias — same tab route as [appointments].
   static const String booking = appointments;
   static const String bookAppointment = '/book-appointment';
+
+  /// Booking entry from favourites doctor cards.
+  static const String makeAppointment = bookAppointment;
   static const String selectPackage = '/booking/select-package';
   static const String patientDetails = '/booking/patient-details';
   static const String paymentMethod = '/booking/payment-method';
@@ -45,6 +48,12 @@ abstract final class AppPaths {
   static const String voiceCall = '/voice-call';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  static const String profilePaymentMethods = '/profile/payment-methods';
+  static const String myFavourites = '/profile/my-favourites';
+  static const String myCoupons = '/profile/my-coupons';
+  static const String myWallet = '/profile/my-wallet';
+  static const String addMoney = '/profile/my-wallet/add-money';
+  static const String topUpSuccess = '/profile/my-wallet/top-up-success';
 
   static const String notifications = '/notifications';
 

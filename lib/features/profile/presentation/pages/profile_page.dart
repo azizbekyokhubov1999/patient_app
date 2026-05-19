@@ -6,9 +6,6 @@ import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
-import '../../../booking/domain/entities/package_type.dart';
-import '../../../booking/domain/entities/patient_info.dart';
-import '../../../booking/presentation/models/booking_route_args.dart';
 import '../manager/profile_cubit.dart';
 import '../manager/profile_state.dart';
 import '../widgets/profile_menu_item.dart';
@@ -63,22 +60,8 @@ class ProfilePage extends StatelessWidget {
     }
   }
 
-  void _openPaymentMethods(BuildContext context, String displayName) {
-    context.push(
-      AppPaths.paymentMethod,
-      extra: PaymentMethodArgs(
-        selectedDate: DateTime.now(),
-        selectedTime: '10:00',
-        selectedPackage: PackageType.messaging,
-        patientInfo: PatientInfo(
-          isForSelf: true,
-          name: displayName,
-          gender: 'Female',
-          age: '24 Years',
-          problemDescription: '',
-        ),
-      ),
-    );
+  void _openPaymentMethods(BuildContext context) {
+    context.push(AppPaths.profilePaymentMethods);
   }
 
   void _showComingSoon(BuildContext context, String feature) {
@@ -172,25 +155,25 @@ class ProfilePage extends StatelessWidget {
                 ProfileMenuItem(
                   icon: Icons.credit_card_outlined,
                   title: 'Payment Methods',
-                  onTap: () => _openPaymentMethods(context, displayName),
+                  onTap: () => _openPaymentMethods(context),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(
                   icon: Icons.favorite_border_outlined,
                   title: 'My Favourites',
-                  onTap: () => _showComingSoon(context, 'My Favourites'),
+                  onTap: () => context.push(AppPaths.myFavourites),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(
                   icon: Icons.confirmation_number_outlined,
                   title: 'My Coupons',
-                  onTap: () => _showComingSoon(context, 'My Coupons'),
+                  onTap: () => context.push(AppPaths.myCoupons),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'My Wallet',
-                  onTap: () => _showComingSoon(context, 'My Wallet'),
+                  onTap: () => context.push(AppPaths.myWallet),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(

@@ -76,6 +76,16 @@ import '../../features/notification/presentation/pages/notification_page.dart';
 import '../../features/profile/presentation/manager/profile_cubit.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/your_profile_page.dart';
+import '../../features/profile/presentation/pages/profile_payment_methods_page.dart';
+import '../../features/profile/presentation/manager/coupons_cubit.dart';
+import '../../features/profile/presentation/pages/my_coupons_page.dart';
+import '../../features/profile/presentation/manager/favourites_cubit.dart';
+import '../../features/profile/presentation/pages/my_favourites_page.dart';
+import '../../features/payment/presentation/manager/payment_cubit.dart';
+import '../../features/payment/presentation/manager/wallet_cubit.dart';
+import '../../features/payment/presentation/pages/add_money_page.dart';
+import '../../features/payment/presentation/pages/my_wallet_page.dart';
+import '../../features/payment/presentation/pages/top_up_successful_page.dart';
 import '../constants/app_paths.dart';
 
 abstract final class AppRouter {
@@ -521,6 +531,54 @@ abstract final class AppRouter {
           create: (_) => ProfileCubit()..loadUserProfile(),
           child: const YourProfilePage(),
         ),
+      ),
+      GoRoute(
+        path: AppPaths.profilePaymentMethods,
+        builder: (context, state) => BlocProvider(
+          create: (_) => PaymentCubit()..loadPaymentMethods(),
+          child: const ProfilePaymentMethodsPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.myFavourites,
+        builder: (context, state) => BlocProvider(
+          create: (_) => FavouritesCubit()..loadFavourites(),
+          child: const MyFavouritesPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.myCoupons,
+        builder: (context, state) => BlocProvider(
+          create: (_) => CouponsCubit()..loadCoupons(),
+          child: const MyCouponsPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.myWallet,
+        builder: (context, state) => MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => WalletCubit()..listenToWallet(),
+            ),
+            BlocProvider(
+              create: (_) => PaymentCubit()..loadPaymentMethods(),
+            ),
+          ],
+          child: const MyWalletPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'add-money',
+            builder: (context, state) => const AddMoneyPage(),
+          ),
+          GoRoute(
+            path: 'top-up-success',
+            builder: (context, state) {
+              final amount = state.extra is double ? state.extra as double : 0.0;
+              return TopUpSuccessfulPage(amount: amount);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: AppPaths.consultationEnded,

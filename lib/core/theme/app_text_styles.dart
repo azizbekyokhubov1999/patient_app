@@ -46,6 +46,13 @@ abstract final class AppTextStyles {
     color: AppColors.secondaryText,
   );
 
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.45,
+    color: AppColors.secondaryText,
+  );
+
   static const TextStyle buttonLabel = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w700,
