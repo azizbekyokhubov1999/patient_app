@@ -28,7 +28,8 @@ class MyCouponsPage extends StatelessWidget {
             CouponsError(:final message) => _CouponsErrorView(message: message),
             CouponsLoaded(:final coupons) when coupons.isEmpty =>
               const _CouponsEmptyView(),
-            CouponsLoaded(:final coupons) => _CouponsListView(coupons: coupons),
+            CouponsLoaded(:final coupons) =>
+              _CouponsListView(coupons: coupons),
           };
         },
       ),
@@ -43,28 +44,33 @@ class _CouponsListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.xl,
         AppSpacing.sm,
         AppSpacing.xl,
         AppSpacing.xxl,
       ),
-      children: [
-        Text(
-          'Coupons for you',
-          style: AppTextStyles.titleMedium.copyWith(fontSize: 18),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        ...List.generate(coupons.length, (index) {
+      itemCount: coupons.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
           return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < coupons.length - 1 ? AppSpacing.lg : 0,
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: Text(
+              'Coupons for you',
+              style: AppTextStyles.titleMedium.copyWith(fontSize: 18),
             ),
-            child: CouponCard(coupon: coupons[index]),
           );
-        }),
-      ],
+        }
+
+        final couponIndex = index - 1;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: couponIndex < coupons.length - 1 ? AppSpacing.lg : 0,
+          ),
+          child: CouponCard(coupon: coupons[couponIndex]),
+        );
+      },
     );
   }
 }

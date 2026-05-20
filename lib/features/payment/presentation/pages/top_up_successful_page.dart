@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../models/wallet_flow_args.dart';
+import '../utils/wallet_navigation.dart';
 import '../widgets/top_up_success_badge.dart';
 
 class TopUpSuccessfulPage extends StatelessWidget {
-  const TopUpSuccessfulPage({required this.amount, super.key});
+  const TopUpSuccessfulPage({
+    required this.amount,
+    this.walletFlow,
+    super.key,
+  });
 
   final double amount;
+  final WalletFlowArgs? walletFlow;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +57,8 @@ class TopUpSuccessfulPage extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => context.go(AppPaths.myWallet),
+                  onPressed: () =>
+                      completeTopUpFlow(context, walletFlow: walletFlow),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,

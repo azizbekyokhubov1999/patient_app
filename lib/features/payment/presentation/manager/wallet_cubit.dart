@@ -5,10 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/mock_data.dart';
 import '../../data/models/transaction_model.dart';
 import 'wallet_state.dart';
-
-const bool _kPresentationMockWallet = true;
 
 class WalletCubit extends Cubit<WalletState> {
   WalletCubit({
@@ -31,17 +30,19 @@ class WalletCubit extends Cubit<WalletState> {
   void listenToWallet() {
     emit(const WalletLoading());
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      emit(const WalletError('No signed-in user'));
-      return;
-    }
-
     unawaited(_walletSub?.cancel());
     unawaited(_transactionsSub?.cancel());
 
-    if (_kPresentationMockWallet) {
-      _emitMockWallet();
+    if (kUseProfileMockData) {
+      Future<void>.delayed(const Duration(milliseconds: 500), () {
+        if (!isClosed) _emitMockWallet();
+      });
+      return;
+    }
+
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      emit(const WalletError('No signed-in user'));
       return;
     }
 
@@ -83,17 +84,6 @@ class WalletCubit extends Cubit<WalletState> {
 
     emit(current.copyWith(topUpStatus: TopUpStatus.loading, topUpErrorMessage: null));
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      emit(
-        current.copyWith(
-          topUpStatus: TopUpStatus.failure,
-          topUpErrorMessage: 'No signed-in user',
-        ),
-      );
-      return;
-    }
-
     final newBalance = current.balance + amount;
     final now = DateTime.now();
     final transaction = TransactionModel(
@@ -106,7 +96,7 @@ class WalletCubit extends Cubit<WalletState> {
     );
 
     try {
-      if (_kPresentationMockWallet) {
+      if (kUseProfileMockData) {
         await Future<void>.delayed(const Duration(milliseconds: 700));
         final tx = transaction.copyWith(id: 'tx-${now.millisecondsSinceEpoch}');
         _balance = newBalance;
@@ -117,6 +107,17 @@ class WalletCubit extends Cubit<WalletState> {
             walletId: current.walletId,
             transactions: List.unmodifiable(_transactions),
             topUpStatus: TopUpStatus.success,
+          ),
+        );
+        return;
+      }
+
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) {
+        emit(
+          current.copyWith(
+            topUpStatus: TopUpStatus.failure,
+            topUpErrorMessage: 'No signed-in user',
           ),
         );
         return;
@@ -195,47 +196,9 @@ class WalletCubit extends Cubit<WalletState> {
   }
 
   void _emitMockWallet() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final jan7 = DateTime(2026, 1, 7);
-
-    _balance = 2400;
-    _walletId = 'W-854568';
-    _transactions = [
-      TransactionModel(
-        id: 'tx-1',
-        title: 'Money Added to Wallet',
-        timestamp: today.add(const Duration(hours: 11, minutes: 30)),
-        amount: 250,
-        type: 'income',
-        postBalance: 2400,
-      ),
-      TransactionModel(
-        id: 'tx-2',
-        title: 'Booking ID #SL562542',
-        timestamp: today.add(const Duration(hours: 9, minutes: 15)),
-        amount: 50,
-        type: 'expense',
-        postBalance: 2150,
-      ),
-      TransactionModel(
-        id: 'tx-3',
-        title: 'Money Added to Wallet',
-        timestamp: yesterday.add(const Duration(hours: 16, minutes: 45)),
-        amount: 100,
-        type: 'income',
-        postBalance: 2200,
-      ),
-      TransactionModel(
-        id: 'tx-4',
-        title: 'Booking ID #SL562401',
-        timestamp: jan7.add(const Duration(hours: 14, minutes: 20)),
-        amount: 75,
-        type: 'expense',
-        postBalance: 2100,
-      ),
-    ];
+    _balance = mockWalletBalanceAmount;
+    _walletId = mockWalletId;
+    _transactions = mockWalletTransactions();
 
     emit(
       WalletLoaded(

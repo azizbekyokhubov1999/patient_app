@@ -49,6 +49,11 @@ abstract final class AppPaths {
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String profilePaymentMethods = '/profile/payment-methods';
+  static const String settings = '/profile/settings';
+  static const String notificationSettings = '/profile/settings/notifications';
+  static const String passwordManager = '/profile/settings/password-manager';
+  static const String helpCenter = '/profile/help-center';
+  static const String privacyPolicy = '/profile/privacy-policy';
   static const String myFavourites = '/profile/my-favourites';
   static const String myCoupons = '/profile/my-coupons';
   static const String myWallet = '/profile/my-wallet';

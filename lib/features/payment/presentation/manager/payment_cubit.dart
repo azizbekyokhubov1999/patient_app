@@ -4,22 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/mock_data.dart';
 import '../../../booking/domain/entities/card_model.dart';
 import '../../data/models/saved_payment_card.dart';
 import 'payment_state.dart';
-
-const bool _kPresentationMockPayment = true;
-
-List<SavedPaymentCard> _mockCards() {
-  return const [
-    SavedPaymentCard(
-      id: 'card-1',
-      cardHolderName: 'Jennifer Aaker',
-      maskedNumber: '**** **** **** 8047',
-      lastFour: '8047',
-    ),
-  ];
-}
 
 class PaymentCubit extends Cubit<PaymentState> {
   PaymentCubit({
@@ -35,6 +23,20 @@ class PaymentCubit extends Cubit<PaymentState> {
   Future<void> loadPaymentMethods() async {
     emit(state.copyWith(status: PaymentStatus.loading, errorMessage: null));
 
+    if (kUseProfileMockData) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      emit(
+        state.copyWith(
+          status: PaymentStatus.loaded,
+          cards: mockSavedPaymentCards,
+          defaultMethodId: PaymentMethodIds.paypal,
+          walletId: mockWalletId,
+          errorMessage: null,
+        ),
+      );
+      return;
+    }
+
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
       emit(
@@ -47,19 +49,6 @@ class PaymentCubit extends Cubit<PaymentState> {
     }
 
     try {
-      if (_kPresentationMockPayment) {
-        await Future<void>.delayed(const Duration(milliseconds: 350));
-        emit(
-          state.copyWith(
-            status: PaymentStatus.loaded,
-            cards: _mockCards(),
-            defaultMethodId: PaymentMethodIds.paypal,
-            walletId: 'WLT-${uid.substring(0, 6).toUpperCase()}',
-          ),
-        );
-        return;
-      }
-
       final userDoc = await _firestore.collection('users').doc(uid).get();
       final userData = userDoc.data() ?? {};
 
@@ -94,18 +83,18 @@ class PaymentCubit extends Cubit<PaymentState> {
   }
 
   Future<void> setDefaultPaymentMethod(String methodId) async {
+    emit(state.copyWith(defaultMethodId: methodId));
+
+    if (kUseProfileMockData) return;
+
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
-    emit(state.copyWith(defaultMethodId: methodId));
-
     try {
-      if (!_kPresentationMockPayment) {
-        await _firestore.collection('users').doc(uid).set(
-          {'defaultPaymentMethodId': methodId},
-          SetOptions(merge: true),
-        );
-      }
+      await _firestore.collection('users').doc(uid).set(
+        {'defaultPaymentMethodId': methodId},
+        SetOptions(merge: true),
+      );
     } catch (e, st) {
       developer.log('setDefaultPaymentMethod error', error: e, stackTrace: st);
       emit(
@@ -118,9 +107,6 @@ class PaymentCubit extends Cubit<PaymentState> {
   }
 
   Future<void> addSavedCard(CardModel card) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-
     final digits = card.cardNumber.replaceAll(RegExp(r'\D'), '');
     final lastFour =
         digits.length >= 4 ? digits.substring(digits.length - 4) : '0000';
@@ -133,7 +119,10 @@ class PaymentCubit extends Cubit<PaymentState> {
     );
 
     try {
-      if (!_kPresentationMockPayment) {
+      if (!kUseProfileMockData) {
+        final uid = _auth.currentUser?.uid;
+        if (uid == null) return;
+
         await _firestore
             .collection('users')
             .doc(uid)

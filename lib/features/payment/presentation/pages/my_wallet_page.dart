@@ -8,6 +8,9 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../data/models/transaction_model.dart';
 import '../manager/wallet_cubit.dart';
 import '../manager/wallet_state.dart';
+import '../manager/payment_cubit.dart';
+import '../models/wallet_flow_args.dart';
+import '../utils/wallet_navigation.dart';
 import '../utils/wallet_transaction_grouper.dart';
 import '../widgets/wallet_balance_card.dart';
 import '../widgets/wallet_transaction_tile.dart';
@@ -19,9 +22,10 @@ class MyWalletPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'My Wallet',
         backgroundColor: AppColors.white,
+        onBack: () => popWalletOrGoProfile(context),
       ),
       body: BlocBuilder<WalletCubit, WalletState>(
         builder: (context, state) {
@@ -86,7 +90,13 @@ class _WalletLoadedBody extends StatelessWidget {
           return WalletBalanceCard(
             balance: balance,
             walletId: walletId,
-            onAddMoney: () => context.push(AppPaths.addMoney),
+            onAddMoney: () => context.push(
+              AppPaths.addMoney,
+              extra: WalletFlowArgs(
+                walletCubit: context.read<WalletCubit>(),
+                paymentCubit: context.read<PaymentCubit>(),
+              ),
+            ),
           );
         }
 

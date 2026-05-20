@@ -179,19 +179,19 @@ class ProfilePage extends StatelessWidget {
                 ProfileMenuItem(
                   icon: Icons.settings_outlined,
                   title: 'Settings',
-                  onTap: () => _showComingSoon(context, 'Settings'),
+                  onTap: () => context.push(AppPaths.settings),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(
                   icon: Icons.info_outline,
                   title: 'Help Center',
-                  onTap: () => _showComingSoon(context, 'Help Center'),
+                  onTap: () => context.push(AppPaths.helpCenter),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(
                   icon: Icons.lock_outline,
                   title: 'Privacy Policy',
-                  onTap: () => _showComingSoon(context, 'Privacy Policy'),
+                  onTap: () => context.push(AppPaths.privacyPolicy),
                 ),
                 const Divider(height: 1, color: AppColors.stroke),
                 ProfileMenuItem(

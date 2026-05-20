@@ -11,6 +11,8 @@ import '../manager/payment_cubit.dart';
 import '../manager/payment_state.dart';
 import '../manager/wallet_cubit.dart';
 import '../manager/wallet_state.dart';
+import '../models/wallet_flow_args.dart';
+import '../utils/wallet_flow_provider.dart';
 
 class AddMoneyPage extends StatefulWidget {
   const AddMoneyPage({super.key});
@@ -22,6 +24,23 @@ class AddMoneyPage extends StatefulWidget {
 class _AddMoneyPageState extends State<AddMoneyPage> {
   final _amountController = TextEditingController();
   String? _selectedPaymentSourceId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final paymentState = context.read<PaymentCubit>().state;
+      if (paymentState.isLoaded && _selectedPaymentSourceId == null) {
+        setState(() {
+          _selectedPaymentSourceId = paymentState.defaultMethodId ??
+              (paymentState.cards.isNotEmpty
+                  ? PaymentMethodIds.card(paymentState.cards.first.id)
+                  : PaymentMethodIds.paypal);
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -76,8 +95,15 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
 
         if (state.isTopUpSuccess) {
           final amount = _parseAmount() ?? 0;
+          final walletFlow = readWalletFlowArgs(context);
           context.read<WalletCubit>().clearTopUpStatus();
-          context.push(AppPaths.topUpSuccess, extra: amount);
+          context.push(
+            AppPaths.topUpSuccess,
+            extra: TopUpSuccessArgs(
+              amount: amount,
+              walletFlow: walletFlow,
+            ),
+          );
           return;
         }
 
@@ -92,6 +118,36 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
         }
       },
       builder: (context, walletState) {
+        if (walletState is WalletInitial || walletState is WalletLoading) {
+          return const Scaffold(
+            backgroundColor: AppColors.white,
+            appBar: CustomAppBar(
+              title: 'Add Money',
+              backgroundColor: AppColors.white,
+            ),
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (walletState is WalletError) {
+          return Scaffold(
+            backgroundColor: AppColors.white,
+            appBar: const CustomAppBar(
+              title: 'Add Money',
+              backgroundColor: AppColors.white,
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  walletState.message,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
+        }
+
         final balance = walletState is WalletLoaded ? walletState.balance : 0.0;
         final isSubmitting =
             walletState is WalletLoaded && walletState.isTopUpLoading;

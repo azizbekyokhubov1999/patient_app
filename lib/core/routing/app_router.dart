@@ -80,12 +80,21 @@ import '../../features/profile/presentation/pages/profile_payment_methods_page.d
 import '../../features/profile/presentation/manager/coupons_cubit.dart';
 import '../../features/profile/presentation/pages/my_coupons_page.dart';
 import '../../features/profile/presentation/manager/favourites_cubit.dart';
+import '../../features/profile/presentation/pages/help_center_page.dart';
+import '../../features/profile/presentation/pages/privacy_policy_page.dart';
+import '../../features/profile/presentation/manager/privacy_policy_cubit.dart';
 import '../../features/profile/presentation/pages/my_favourites_page.dart';
+import '../../features/profile/presentation/manager/help_center_cubit.dart';
+import '../../features/profile/presentation/manager/settings_cubit.dart';
+import '../../features/profile/presentation/pages/notification_settings_page.dart';
+import '../../features/profile/presentation/pages/password_manager_page.dart';
+import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/payment/presentation/manager/payment_cubit.dart';
-import '../../features/payment/presentation/manager/wallet_cubit.dart';
 import '../../features/payment/presentation/pages/add_money_page.dart';
 import '../../features/payment/presentation/pages/my_wallet_page.dart';
 import '../../features/payment/presentation/pages/top_up_successful_page.dart';
+import '../../features/payment/presentation/models/wallet_flow_args.dart';
+import '../../features/payment/presentation/utils/wallet_flow_provider.dart';
 import '../constants/app_paths.dart';
 
 abstract final class AppRouter {
@@ -540,6 +549,43 @@ abstract final class AppRouter {
         ),
       ),
       GoRoute(
+        path: AppPaths.settings,
+        builder: (context, state) => BlocProvider(
+          create: (_) => SettingsCubit()..loadSettings(),
+          child: const SettingsPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => BlocProvider(
+              create: (_) => SettingsCubit()..loadSettings(),
+              child: const NotificationSettingsPage(),
+            ),
+          ),
+          GoRoute(
+            path: 'password-manager',
+            builder: (context, state) => BlocProvider(
+              create: (_) => SettingsCubit()..loadSettings(),
+              child: const PasswordManagerPage(),
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppPaths.helpCenter,
+        builder: (context, state) => BlocProvider(
+          create: (_) => HelpCenterCubit(),
+          child: const HelpCenterPage(),
+        ),
+      ),
+      GoRoute(
+        path: AppPaths.privacyPolicy,
+        builder: (context, state) => BlocProvider(
+          create: (_) => PrivacyPolicyCubit(),
+          child: const PrivacyPolicyPage(),
+        ),
+      ),
+      GoRoute(
         path: AppPaths.myFavourites,
         builder: (context, state) => BlocProvider(
           create: (_) => FavouritesCubit()..loadFavourites(),
@@ -555,27 +601,34 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.myWallet,
-        builder: (context, state) => MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => WalletCubit()..listenToWallet(),
-            ),
-            BlocProvider(
-              create: (_) => PaymentCubit()..loadPaymentMethods(),
-            ),
-          ],
+        builder: (context, state) => buildWalletFlowScope(
+          context: context,
+          state: state,
           child: const MyWalletPage(),
         ),
         routes: [
           GoRoute(
             path: 'add-money',
-            builder: (context, state) => const AddMoneyPage(),
+            builder: (context, state) => buildWalletFlowScope(
+              context: context,
+              state: state,
+              child: const AddMoneyPage(),
+            ),
           ),
           GoRoute(
             path: 'top-up-success',
             builder: (context, state) {
-              final amount = state.extra is double ? state.extra as double : 0.0;
-              return TopUpSuccessfulPage(amount: amount);
+              final amount = state.extra is TopUpSuccessArgs
+                  ? (state.extra as TopUpSuccessArgs).amount
+                  : state.extra is double
+                      ? state.extra as double
+                      : 0.0;
+              return TopUpSuccessfulPage(
+                amount: amount,
+                walletFlow: state.extra is TopUpSuccessArgs
+                    ? (state.extra as TopUpSuccessArgs).walletFlow
+                    : null,
+              );
             },
           ),
         ],

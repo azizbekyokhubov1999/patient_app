@@ -14,117 +14,114 @@ class CouponCard extends StatelessWidget {
 
   final CouponModel coupon;
 
-  static const double _cardHeight = 168;
   static const double _notchFactor = 0.7;
 
   @override
   Widget build(BuildContext context) {
     const clipper = CouponClipper(notchFactor: _notchFactor);
-    final dividerY = _cardHeight * _notchFactor;
-    final lowerHeight = _cardHeight - dividerY;
 
-    return PhysicalShape(
-      clipper: clipper,
-      color: AppColors.white,
+    return Material(
+      color: Colors.transparent,
       elevation: 1.5,
       shadowColor: Colors.black26,
-      child: SizedBox(
-        height: _cardHeight,
-        width: double.infinity,
-        child: Stack(
+      child: PhysicalShape(
+        clipper: clipper,
+        color: AppColors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Positioned(
-              top: dividerY,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ColoredBox(color: AppColors.neutral100),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.sm,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          coupon.code,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                            color: AppColors.primaryText,
+                          ),
+                        ),
+                      ),
+                      _StatusBadge(coupon: coupon),
+                    ],
                   ),
-                  child: Column(
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    coupon.unlockCondition,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              coupon.code,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.6,
-                                color: AppColors.primaryText,
-                              ),
-                            ),
+                      const _DiscountStarBadge(),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          coupon.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            height: 1.25,
                           ),
-                          _StatusBadge(coupon: coupon),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        coupon.unlockCondition,
-                        style: AppTextStyles.bodySmall,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        children: [
-                          const _DiscountStarBadge(),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              coupon.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: CustomPaint(
-                    size: const Size(double.infinity, 1),
-                    painter: _DashedDividerPainter(),
-                  ),
-                ),
-                SizedBox(
-                  height: lowerHeight - 1,
-                  child: Center(
-                    child: TextButton(
-                      onPressed: () => _copyCode(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.lg,
-                          vertical: AppSpacing.sm,
-                        ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: CustomPaint(
+                size: const Size(double.infinity, 1),
+                painter: _DashedDividerPainter(),
+              ),
+            ),
+            ColoredBox(
+              color: AppColors.neutral100,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => _copyCode(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.sm,
                       ),
-                      child: const Text(
-                        'COPY CODE',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                        ),
+                    ),
+                    child: const Text(
+                      'COPY CODE',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -218,7 +215,7 @@ class _StarburstPainter extends CustomPainter {
     for (var i = 0; i < points * 2; i++) {
       final isOuter = i.isEven;
       final radius = isOuter ? outerRadius : innerRadius;
-      final angle = (i * 3.141592653589793 / points) - 3.141592653589793 / 2;
+      final angle = (i * math.pi / points) - math.pi / 2;
       final point = Offset(
         center.dx + radius * math.cos(angle),
         center.dy + radius * math.sin(angle),

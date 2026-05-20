@@ -46,6 +46,13 @@ abstract final class AppTextStyles {
     color: AppColors.secondaryText,
   );
 
+  static const TextStyle bodyLarge = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.primaryText,
+    height: 1.35,
+  );
+
   static const TextStyle bodySmall = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w400,

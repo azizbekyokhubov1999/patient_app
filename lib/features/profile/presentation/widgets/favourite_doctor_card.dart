@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../booking/presentation/utils/booking_navigation.dart';
@@ -29,14 +30,18 @@ class FavouriteDoctorCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              VerifiedDoctorAvatar(
-                imageUrl: doctor.imageUrl,
-                radius: 34,
+              SizedBox(
+                width: 76,
+                child: VerifiedDoctorAvatar(
+                  imageUrl: doctor.imageUrl,
+                  radius: 28,
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -45,18 +50,24 @@ class FavouriteDoctorCard extends StatelessWidget {
                   children: [
                     Text(
                       doctor.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primaryText,
+                        height: 1.25,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       doctor.specialty,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.secondaryText,
+                        height: 1.3,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -92,28 +103,28 @@ class FavouriteDoctorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => BookingNavigation.startBooking(
-                context,
-                doctor: doctor,
-                doctorId: doctor.id,
+          TextButton(
+            onPressed: () => BookingNavigation.startBooking(
+              context,
+              doctor: doctor,
+              doctorId: doctor.id,
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(double.infinity, 48),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Make Appointment',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+            ),
+            child: const Text(
+              'Make Appointment',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -141,17 +152,21 @@ class _RatingRow extends StatelessWidget {
         ...List.generate(5, (index) {
           return Icon(
             index < fullStars ? Icons.star_rounded : Icons.star_outline_rounded,
-            size: 16,
+            size: 15,
             color: AppColors.warning,
           );
         }),
-        const SizedBox(width: 6),
-        Text(
-          '${rating.toStringAsFixed(1)} | $reviewsCount Reviews',
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.secondaryText,
-            fontWeight: FontWeight.w500,
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            '${rating.toStringAsFixed(1)} | $reviewsCount Reviews',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.secondaryText,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

@@ -4,24 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/mock_data.dart';
 import '../../data/models/user_model.dart';
 import 'profile_state.dart';
-
-/// Demo profile while Firestore has no user document.
-const bool _kPresentationMockProfile = true;
-
-UserModel _presentationMockUser(String uid) {
-  return UserModel(
-    uid: uid,
-    displayName: 'Jennifer Aaker',
-    email: 'example@gmail.com',
-    photoUrl: 'https://picsum.photos/200?profile-jennifer',
-    phone: '(208) 555-0112',
-    countryCode: '+1',
-    dateOfBirth: '15/02/2002',
-    gender: 'Female',
-  );
-}
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit({
@@ -37,6 +22,18 @@ class ProfileCubit extends Cubit<ProfileState> {
   Future<void> loadUserProfile() async {
     emit(state.copyWith(status: ProfileStatus.loading, errorMessage: null));
 
+    if (kUseProfileMockData) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      emit(
+        state.copyWith(
+          user: mockProfileUser,
+          status: ProfileStatus.success,
+          errorMessage: null,
+        ),
+      );
+      return;
+    }
+
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) {
       emit(
@@ -49,16 +46,6 @@ class ProfileCubit extends Cubit<ProfileState> {
     }
 
     try {
-      if (_kPresentationMockProfile) {
-        await Future<void>.delayed(const Duration(milliseconds: 400));
-        emit(
-          state.copyWith(
-            user: _presentationMockUser(firebaseUser.uid),
-            status: ProfileStatus.success,
-          ),
-        );
-        return;
-      }
 
       final doc =
           await _firestore.collection('users').doc(firebaseUser.uid).get();
@@ -93,7 +80,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(state.copyWith(status: ProfileStatus.updating, errorMessage: null));
 
     try {
-      if (!_kPresentationMockProfile) {
+      if (!kUseProfileMockData) {
         await _firestore
             .collection('users')
             .doc(updatedUser.uid)
@@ -144,7 +131,7 @@ class ProfileCubit extends Cubit<ProfileState> {
       final updatedPhoto =
           'https://picsum.photos/200?profile-${DateTime.now().millisecondsSinceEpoch}';
 
-      if (!_kPresentationMockProfile) {
+      if (!kUseProfileMockData) {
         await _firestore.collection('users').doc(current.uid).update({
           'photoUrl': updatedPhoto,
         });
