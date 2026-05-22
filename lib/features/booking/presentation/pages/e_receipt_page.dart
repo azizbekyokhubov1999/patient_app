@@ -8,6 +8,7 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../models/e_receipt_args.dart';
+import '../models/queue_status_args.dart';
 import '../widgets/dashed_divider.dart';
 import '../widgets/qr_section.dart';
 import '../widgets/receipt_info_row.dart';
@@ -29,6 +30,30 @@ class EReceiptPage extends StatefulWidget {
 
 class _EReceiptPageState extends State<EReceiptPage> {
   bool _isDownloading = false;
+  bool _scanSimulated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.args.hospitalKioskFlow) {
+      _scheduleHospitalScanSimulation();
+    }
+  }
+
+  void _scheduleHospitalScanSimulation() {
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (!mounted || _scanSimulated) return;
+      _onHospitalScanSuccess();
+    });
+  }
+
+  void _onHospitalScanSuccess() {
+    if (_scanSimulated) return;
+    _scanSimulated = true;
+    final queue = widget.args.queueStatusAfterScan ??
+        QueueStatusArgs(appointmentId: widget.args.appointmentId);
+    context.push(AppPaths.appointmentQueueStatus, extra: queue);
+  }
 
   Future<void> _onDownloadPressed() async {
     if (_isDownloading) return;
@@ -42,6 +67,10 @@ class _EReceiptPageState extends State<EReceiptPage> {
   }
 
   void _goToAppointments() {
+    if (widget.args.hospitalKioskFlow) {
+      _onHospitalScanSuccess();
+      return;
+    }
     context.go(AppPaths.booking);
   }
 
@@ -189,6 +218,23 @@ class _EReceiptPageState extends State<EReceiptPage> {
               ),
             ),
           ),
+          if (widget.args.hospitalKioskFlow)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.sm,
+                AppSpacing.xl,
+                0,
+              ),
+              child: Text(
+                'Show this QR code to the hospital scanner. Scan will be detected automatically.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.doctorMeta.copyWith(
+                  fontSize: 13,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ),
           SafeArea(
             top: false,
             minimum: const EdgeInsets.fromLTRB(
@@ -210,7 +256,12 @@ class _EReceiptPageState extends State<EReceiptPage> {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                child: const Text('Go to Appointments', style: AppTextStyles.buttonLabel),
+                child: Text(
+                  widget.args.hospitalKioskFlow
+                      ? 'Simulate Hospital Scan'
+                      : 'Go to Appointments',
+                  style: AppTextStyles.buttonLabel,
+                ),
               ),
             ),
           ),

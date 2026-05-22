@@ -42,6 +42,15 @@ abstract final class AppPaths {
   static const String eReceipt = '/booking/e-receipt';
   static const String cancelBooking = '/cancel-booking';
   static const String consultationEnded = '/consultation-ended';
+
+  /// Offline / online appointment workflow (aliases for scheduling UI).
+  static const String appointmentGetDirection = '/appointments/get-direction';
+  static const String appointmentGetDirection2 = '/appointments/get-direction-2';
+  static const String appointmentYouHaveArrived = '/appointments/you-have-arrived';
+  static const String appointmentEReceipt = '/appointments/e-receipt';
+  static const String appointmentQueueStatus = '/appointments/queue-status';
+  static const String appointmentConsultationEnded =
+      '/appointments/consultation-ended';
   static const String chat = '/chat';
   static const String chatDetail = '/chat-detail';
   static const String videoCall = '/video-call';

@@ -69,7 +69,11 @@ class _GetDirection2PageState extends State<GetDirection2Page> {
       listenWhen: (previous, current) => current is GetDirection2Arrived,
       listener: (context, state) {
         if (state is GetDirection2Arrived) {
-          context.push(AppPaths.youHaveArrived, extra: state.args);
+          final arrivedPath =
+              GoRouterState.of(context).uri.path.startsWith('/appointments')
+                  ? AppPaths.appointmentYouHaveArrived
+                  : AppPaths.youHaveArrived;
+          context.push(arrivedPath, extra: state.args);
         }
       },
       builder: (context, state) {

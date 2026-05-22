@@ -4,40 +4,77 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../domain/entities/appointment_model.dart';
+import '../../../appointments/data/appointment_mock_logic.dart';
 import 'upcoming_appointments_state.dart';
 
 /// Demo data while Firestore has no rows (presentation).
-const bool _kPresentationMockAppointments = true;
+const bool kPresentationMockAppointments = true;
+
+String _formatTime(DateTime time) => DateFormat('HH:mm').format(time);
 
 List<AppointmentModel> _presentationUpcomingMocks() {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
   return [
     AppointmentModel(
-      documentId: 'mock-apt-1',
+      documentId: 'mock-apt-offline-direction',
       appointmentId: 'DC854568',
       doctorName: 'Dr. Jenny William',
       doctorSpecialty: 'Dentist',
       doctorRating: 4.9,
       doctorImageUrl: 'https://picsum.photos/200?jenny',
-      appointmentDate: DateTime(2026, 1, 15),
-      startTime: '11:00',
-      endTime: '12:00',
+      appointmentDate: today,
+      startTime: _formatTime(now.add(const Duration(minutes: 45))),
+      endTime: _formatTime(now.add(const Duration(hours: 1, minutes: 45))),
       status: 'upcoming',
       remindEnabled: true,
+      type: 'offline',
+      sessionStatus: 'pending',
+      hospitalAddress: '6391 Elgin St. Celina, Delaware 10299',
+      hospitalId: 'hospital-celina',
+      packageType: 'In-Person',
+      packageDuration: '45 minutes',
     ),
     AppointmentModel(
-      documentId: 'mock-apt-2',
+      documentId: 'mock-apt-offline-scan',
       appointmentId: 'DC854569',
       doctorName: 'Dr. Sophia Rossi',
       doctorSpecialty: 'Otology Specialist',
       doctorRating: 4.8,
       doctorImageUrl: 'https://picsum.photos/200?sophia',
-      appointmentDate: DateTime(2026, 1, 18),
-      startTime: '15:00',
-      endTime: '15:30',
+      appointmentDate: today,
+      startTime: _formatTime(now.add(const Duration(minutes: 3))),
+      endTime: _formatTime(now.add(const Duration(minutes: 33))),
       status: 'upcoming',
       remindEnabled: false,
+      type: 'offline',
+      sessionStatus: 'pending',
+      hospitalAddress: '4517 Washington Ave. Manchester, Kentucky 39495',
+      hospitalId: 'hospital-manchester',
+      packageType: 'In-Person',
+      packageDuration: '30 minutes',
+    ),
+    AppointmentModel(
+      documentId: 'mock-apt-video-join',
+      appointmentId: 'DC854570',
+      doctorName: 'Dr. James Chen',
+      doctorSpecialty: 'Radiologist Specialist',
+      doctorRating: 4.9,
+      doctorImageUrl: 'https://picsum.photos/200?chen',
+      appointmentDate: today,
+      startTime: _formatTime(now),
+      endTime: _formatTime(now.add(const Duration(minutes: 30))),
+      status: 'upcoming',
+      remindEnabled: true,
+      type: 'video',
+      sessionStatus: 'started_by_doctor',
+      packageType: 'Video',
+      packageDuration: '30 minutes',
+      doctorId: 'mock-dr-chen',
     ),
   ];
 }
@@ -59,7 +96,7 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
     emit(const UpcomingAppointmentsLoading());
     unawaited(_subscription?.cancel());
 
-    if (_kPresentationMockAppointments) {
+    if (kPresentationMockAppointments) {
       emit(UpcomingAppointmentsLoaded(_presentationUpcomingMocks()));
       return;
     }
@@ -89,11 +126,70 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
     );
   }
 
+  void clearPendingConsultationEnd() {
+    final current = state;
+    if (current is! UpcomingAppointmentsLoaded) return;
+    if (current.appointmentPendingConsultationEnd == null) return;
+    emit(current.copyWith(clearPendingConsultationEnd: true));
+  }
+
+  void updateSessionStatus(String documentId, String sessionStatus) {
+    final current = state;
+    if (current is! UpcomingAppointmentsLoaded) return;
+
+    final updated = current.appointments
+        .map(
+          (a) => a.documentId == documentId
+              ? a.copyWith(sessionStatus: sessionStatus)
+              : a,
+        )
+        .toList();
+    emit(UpcomingAppointmentsLoaded(updated));
+  }
+
+  /// Demo: doctor started the online session.
+  void simulateDoctorStarted(String documentId) {
+    updateSessionStatus(documentId, 'started_by_doctor');
+  }
+
+  /// Marks session complete and signals navigation to feedback.
+  AppointmentModel? completeAppointment(String documentId) {
+    final current = state;
+    if (current is! UpcomingAppointmentsLoaded) return null;
+
+    AppointmentModel? completed;
+    final remaining = <AppointmentModel>[];
+
+    for (final a in current.appointments) {
+      if (a.documentId == documentId) {
+        completed = AppointmentMockLogic.withSessionCompleted(a);
+      } else {
+        remaining.add(a);
+      }
+    }
+
+    if (completed == null) return null;
+
+    emit(
+      UpcomingAppointmentsLoaded(
+        remaining,
+        appointmentPendingConsultationEnd: completed,
+      ),
+    );
+
+    developer.log(
+      'Consultation completed for ${completed.displayAppointmentId}',
+      name: 'UpcomingAppointmentsCubit',
+    );
+
+    return completed;
+  }
+
   Future<void> toggleReminder(String appointmentId, bool isEnabled) async {
     final current = state;
     if (current is! UpcomingAppointmentsLoaded) return;
 
-    if (!_kPresentationMockAppointments) {
+    if (!kPresentationMockAppointments) {
       try {
         await _firestore
             .collection('appointments')
@@ -126,7 +222,7 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
     final current = state;
     if (current is! UpcomingAppointmentsLoaded) return;
 
-    if (!_kPresentationMockAppointments) {
+    if (!kPresentationMockAppointments) {
       try {
         await _firestore
             .collection('appointments')

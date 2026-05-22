@@ -13,9 +13,29 @@ final class UpcomingAppointmentsLoading extends UpcomingAppointmentsState {
 }
 
 final class UpcomingAppointmentsLoaded extends UpcomingAppointmentsState {
-  const UpcomingAppointmentsLoaded(this.appointments);
+  const UpcomingAppointmentsLoaded(
+    this.appointments, {
+    this.appointmentPendingConsultationEnd,
+  });
 
   final List<AppointmentModel> appointments;
+
+  /// Set when a session completes — UI listens and opens feedback.
+  final AppointmentModel? appointmentPendingConsultationEnd;
+
+  UpcomingAppointmentsLoaded copyWith({
+    List<AppointmentModel>? appointments,
+    AppointmentModel? appointmentPendingConsultationEnd,
+    bool clearPendingConsultationEnd = false,
+  }) {
+    return UpcomingAppointmentsLoaded(
+      appointments ?? this.appointments,
+      appointmentPendingConsultationEnd: clearPendingConsultationEnd
+          ? null
+          : appointmentPendingConsultationEnd ??
+              this.appointmentPendingConsultationEnd,
+    );
+  }
 }
 
 final class UpcomingAppointmentsError extends UpcomingAppointmentsState {

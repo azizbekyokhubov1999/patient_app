@@ -56,6 +56,22 @@ class CompletedAppointmentsCubit extends Cubit<CompletedAppointmentsState> {
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
 
+  void addCompleted(AppointmentModel appointment) {
+    final current = state;
+    if (current is! CompletedAppointmentsLoaded) {
+      emit(CompletedAppointmentsLoaded([appointment]));
+      return;
+    }
+
+    final exists = current.appointments.any(
+      (a) => a.documentId == appointment.documentId,
+    );
+    if (exists) return;
+
+    final updated = [appointment, ...current.appointments];
+    emit(CompletedAppointmentsLoaded(updated));
+  }
+
   void fetchCompletedAppointments() {
     emit(const CompletedAppointmentsLoading());
     unawaited(_subscription?.cancel());

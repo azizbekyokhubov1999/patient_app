@@ -1,3 +1,5 @@
+import 'queue_status_args.dart';
+
 /// Route arguments for [EReceiptPage].
 class EReceiptArgs {
   const EReceiptArgs({
@@ -12,6 +14,8 @@ class EReceiptArgs {
     required this.subTotal,
     required this.discount,
     required this.totalAmount,
+    this.hospitalKioskFlow = false,
+    this.queueStatusAfterScan,
   });
 
   final String appointmentId;
@@ -26,6 +30,11 @@ class EReceiptArgs {
   final double discount;
   final double totalAmount;
 
+  /// When true, simulates a hospital kiosk scan then opens queue status.
+  final bool hospitalKioskFlow;
+
+  final QueueStatusArgs? queueStatusAfterScan;
+
   EReceiptArgs copyWith({
     String? appointmentId,
     String? patientName,
@@ -38,6 +47,8 @@ class EReceiptArgs {
     double? subTotal,
     double? discount,
     double? totalAmount,
+    bool? hospitalKioskFlow,
+    QueueStatusArgs? queueStatusAfterScan,
   }) {
     return EReceiptArgs(
       appointmentId: appointmentId ?? this.appointmentId,
@@ -51,6 +62,9 @@ class EReceiptArgs {
       subTotal: subTotal ?? this.subTotal,
       discount: discount ?? this.discount,
       totalAmount: totalAmount ?? this.totalAmount,
+      hospitalKioskFlow: hospitalKioskFlow ?? this.hospitalKioskFlow,
+      queueStatusAfterScan:
+          queueStatusAfterScan ?? this.queueStatusAfterScan,
     );
   }
 }

@@ -93,7 +93,13 @@ class _GetDirectionPageState extends State<GetDirectionPage> {
                       bottomInset: bottomInset,
                       onGetDirection: () {
                         context.read<GetDirectionCubit>().startNavigation();
-                        context.push(AppPaths.getDirection2, extra: widget.args);
+                        final step2Path =
+                            GoRouterState.of(context).uri.path.startsWith(
+                                  '/appointments',
+                                )
+                                ? AppPaths.appointmentGetDirection2
+                                : AppPaths.getDirection2;
+                        context.push(step2Path, extra: widget.args);
                       },
                     ),
                   ),

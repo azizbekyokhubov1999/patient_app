@@ -25,6 +25,8 @@ import '../../features/booking/presentation/pages/appointments_page.dart';
 import '../../features/booking/presentation/pages/cancel_booking_page.dart';
 import '../../features/booking/presentation/pages/consultation_ended_page.dart';
 import '../../features/booking/presentation/models/consultation_ended_args.dart';
+import '../../features/booking/presentation/models/queue_status_args.dart';
+import '../../features/booking/presentation/pages/queue_status_page.dart';
 import '../../features/booking/presentation/pages/patient_details_page.dart';
 import '../../features/booking/presentation/pages/booking_success_page.dart';
 import '../../features/booking/presentation/models/e_receipt_args.dart';
@@ -248,10 +250,14 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.youHaveArrived,
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const YouHaveArrivedPage(),
-        ),
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          final args = extra is GetDirectionArgs ? extra : null;
+          return MaterialPage(
+            key: state.pageKey,
+            child: YouHaveArrivedPage(args: args),
+          );
+        },
       ),
       GoRoute(
         path: AppPaths.hospitalDetail,
@@ -635,6 +641,113 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.consultationEnded,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ConsultationEndedArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.go(AppPaths.home),
+                ),
+              ),
+              body: const Center(child: Text('Consultation data not found')),
+            );
+          }
+          return ConsultationEndedPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentGetDirection,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! GetDirectionArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Directions not available')),
+            );
+          }
+          return BlocProvider(
+            create: (_) => GetDirectionCubit()..loadMapData(extra.geoPoint),
+            child: GetDirectionPage(args: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentGetDirection2,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! GetDirectionArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Route not available')),
+            );
+          }
+          return BlocProvider(
+            create: (_) => GetDirection2Cubit(extra)..initialize(),
+            child: GetDirection2Page(args: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentYouHaveArrived,
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          final args = extra is GetDirectionArgs ? extra : null;
+          return MaterialPage(
+            key: state.pageKey,
+            child: YouHaveArrivedPage(args: args),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentEReceipt,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! EReceiptArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('Receipt data not found')),
+            );
+          }
+          return EReceiptPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentQueueStatus,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! QueueStatusArgs) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => context.go(AppPaths.home),
+                ),
+              ),
+              body: const Center(child: Text('Queue status not available')),
+            );
+          }
+          return QueueStatusPage(args: extra);
+        },
+      ),
+      GoRoute(
+        path: AppPaths.appointmentConsultationEnded,
         builder: (context, state) {
           final extra = state.extra;
           if (extra is! ConsultationEndedArgs) {

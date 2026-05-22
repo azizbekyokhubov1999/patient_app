@@ -7,10 +7,28 @@ import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import '../manager/get_direction_args.dart';
 
 /// Arrival confirmation — scan E-Receipt QR at the hospital.
 class YouHaveArrivedPage extends StatelessWidget {
-  const YouHaveArrivedPage({super.key});
+  const YouHaveArrivedPage({this.args, super.key});
+
+  final GetDirectionArgs? args;
+
+  void _openEReceipt(BuildContext context) {
+    final receipt = args?.eReceipt;
+    if (receipt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('E-Receipt not available for this visit')),
+      );
+      return;
+    }
+
+    final path = GoRouterState.of(context).uri.path.startsWith('/appointments')
+        ? AppPaths.appointmentEReceipt
+        : AppPaths.eReceipt;
+    context.push(path, extra: receipt);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +78,7 @@ class YouHaveArrivedPage extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => context.go(AppPaths.home),
+                  onPressed: () => _openEReceipt(context),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,
@@ -71,7 +89,7 @@ class YouHaveArrivedPage extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: const Text(
-                    'Scan QR',
+                    'Scan QR Code',
                     style: AppTextStyles.buttonLabel,
                   ),
                 ),

@@ -15,7 +15,7 @@ import '../manager/completed_appointments_cubit.dart';
 import '../manager/completed_appointments_state.dart';
 import '../manager/upcoming_appointments_cubit.dart';
 import '../manager/upcoming_appointments_state.dart';
-import '../models/e_receipt_args.dart';
+import '../utils/appointment_flow_navigation.dart';
 import '../widgets/cancelled_appointment_card.dart';
 import '../widgets/completed_appointment_card.dart';
 import '../widgets/upcoming_appointment_card.dart';
@@ -28,7 +28,23 @@ class AppointmentsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return BlocListener<UpcomingAppointmentsCubit, UpcomingAppointmentsState>(
+      listenWhen: (previous, current) =>
+          current is UpcomingAppointmentsLoaded &&
+          current.appointmentPendingConsultationEnd != null &&
+          (previous is! UpcomingAppointmentsLoaded ||
+              previous.appointmentPendingConsultationEnd?.documentId !=
+                  current.appointmentPendingConsultationEnd?.documentId),
+      listener: (context, state) {
+        final loaded = state as UpcomingAppointmentsLoaded;
+        final completed = loaded.appointmentPendingConsultationEnd;
+        if (completed == null) return;
+
+        context.read<CompletedAppointmentsCubit>().addCompleted(completed);
+        navigateConsultationEnded(context, completed);
+        context.read<UpcomingAppointmentsCubit>().clearPendingConsultationEnd();
+      },
+      child: DefaultTabController(
       length: 3,
       initialIndex: initialTabIndex.clamp(0, 2),
       child: Scaffold(
@@ -114,6 +130,7 @@ class AppointmentsPage extends StatelessWidget {
             _CancelledTab(),
           ],
         ),
+      ),
       ),
     );
   }
@@ -212,7 +229,8 @@ class _UpcomingTab extends StatelessWidget {
                         onCancel: () => _confirmCancel(context, appointment),
                         onViewReceipt: () => context.push(
                           AppPaths.eReceipt,
-                          extra: _eReceiptArgsFrom(appointment),
+                          extra: eReceiptArgsFromAppointment(appointment)
+                              .copyWith(hospitalKioskFlow: false),
                         ),
                         onToggleReminder: (enabled) => context
                             .read<UpcomingAppointmentsCubit>()
@@ -224,6 +242,34 @@ class _UpcomingTab extends StatelessWidget {
                           AppPaths.doctorDetails,
                           extra: _doctorFrom(appointment),
                         ),
+                        onJoinSession: appointment.showJoinSession
+                            ? () async {
+                                await navigateJoinSession(
+                                  context,
+                                  appointment,
+                                );
+                                if (!context.mounted) return;
+                                context
+                                    .read<UpcomingAppointmentsCubit>()
+                                    .completeAppointment(
+                                      appointment.documentId,
+                                    );
+                              }
+                            : null,
+                        onGetDirection: appointment.showGetDirection
+                            ? () => navigateGetDirection(context, appointment)
+                            : null,
+                        onScanQr: appointment.showScanQR
+                            ? () => navigateScanQr(context, appointment)
+                            : null,
+                        onSimulateDoctorComplete:
+                            appointment.showJoinSession
+                                ? () => context
+                                    .read<UpcomingAppointmentsCubit>()
+                                    .completeAppointment(
+                                      appointment.documentId,
+                                    )
+                                : null,
                       );
                     },
                   ),
@@ -297,7 +343,8 @@ class _CompletedTab extends StatelessWidget {
                         ),
                         onViewReceipt: () => context.push(
                           AppPaths.eReceipt,
-                          extra: _eReceiptArgsFrom(appointment),
+                          extra: eReceiptArgsFromAppointment(appointment)
+                              .copyWith(hospitalKioskFlow: false),
                         ),
                         onDoctorTap: () => context.push(
                           AppPaths.doctorDetails,
@@ -421,18 +468,3 @@ Doctor _doctorFrom(AppointmentModel appointment) {
   );
 }
 
-EReceiptArgs _eReceiptArgsFrom(AppointmentModel appointment) {
-  return EReceiptArgs(
-    appointmentId: appointment.displayAppointmentId,
-    patientName: appointment.patientName ?? 'Patient',
-    patientPhone: appointment.patientPhone ?? '+1 (208) 555-0112',
-    doctorName: appointment.doctorName,
-    packageType: appointment.packageType,
-    packageDuration: appointment.packageDuration,
-    bookingDate: appointment.appointmentDate,
-    bookingTime: appointment.startTime,
-    subTotal: appointment.subTotal,
-    discount: appointment.discount,
-    totalAmount: appointment.totalAmount,
-  );
-}
