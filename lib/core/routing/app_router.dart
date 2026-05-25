@@ -61,6 +61,7 @@ import '../../features/home/domain/entities/doctor.dart';
 import '../../features/home/domain/entities/doctor_review.dart';
 import '../../features/home/domain/entities/hospital.dart';
 import '../../features/home/domain/entities/working_hours_entry.dart';
+import '../../features/home/presentation/pages/doctor_details_loader_page.dart';
 import '../../features/home/presentation/pages/doctor_details_page.dart';
 import '../../features/home/presentation/pages/leave_review_doctor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
@@ -299,18 +300,21 @@ abstract final class AppRouter {
         path: AppPaths.doctorDetails,
         builder: (context, state) {
           final extra = state.extra;
-          if (extra is! Doctor) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('Doctor not found')),
-            );
+          if (extra is Doctor) {
+            return DoctorDetailsPage(doctor: extra);
           }
-          return DoctorDetailsPage(doctor: extra);
+          if (extra is String && extra.trim().isNotEmpty) {
+            return DoctorDetailsLoaderPage(doctorId: extra.trim());
+          }
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            body: const Center(child: Text('Doctor not found')),
+          );
         },
       ),
       GoRoute(

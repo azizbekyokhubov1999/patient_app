@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,7 +21,13 @@ class FavouritesCubit extends Cubit<FavouritesState> {
   final FavouritesRepository _favouritesRepository;
   final DoctorsRepository _doctorsRepository;
 
+  StreamSubscription<List<DoctorModel>>? _doctorsSubscription;
+  StreamSubscription<List<HospitalModel>>? _hospitalsSubscription;
+  List<HospitalModel> _latestHospitals = const [];
+
   Future<void> loadFavourites() async {
+    await _doctorsSubscription?.cancel();
+    await _hospitalsSubscription?.cancel();
     emit(const FavouritesLoading());
 
     if (kUseProfileMockData) {
@@ -34,12 +41,48 @@ class FavouritesCubit extends Cubit<FavouritesState> {
     }
 
     try {
-      final result = await _favouritesRepository.loadFavourites();
+      final initial = await _favouritesRepository.loadFavourites();
+      _latestHospitals = List<HospitalModel>.from(initial.hospitals);
       emit(
         FavouritesLoaded(
-          favoriteDoctors: result.doctors,
-          favoriteHospitals: result.hospitals,
+          favoriteDoctors: initial.doctors,
+          favoriteHospitals: _latestHospitals,
         ),
+      );
+
+      _doctorsSubscription =
+          _favouritesRepository.watchFavoriteDoctors().listen(
+        (doctors) {
+          emit(
+            FavouritesLoaded(
+              favoriteDoctors: doctors,
+              favoriteHospitals: _latestHospitals,
+            ),
+          );
+        },
+        onError: (Object e, StackTrace st) {
+          developer.log('watchFavoriteDoctors error', error: e, stackTrace: st);
+          emit(FavouritesError(e.toString()));
+        },
+      );
+
+      _hospitalsSubscription =
+          _favouritesRepository.watchFavoriteHospitals().listen(
+        (hospitals) {
+          _latestHospitals = List<HospitalModel>.from(hospitals);
+          final current = state;
+          if (current is FavouritesLoaded) {
+            emit(
+              FavouritesLoaded(
+                favoriteDoctors: current.favoriteDoctors,
+                favoriteHospitals: _latestHospitals,
+              ),
+            );
+          }
+        },
+        onError: (Object e, StackTrace st) {
+          developer.log('watchFavoriteHospitals error', error: e, stackTrace: st);
+        },
       );
     } catch (e, st) {
       developer.log('loadFavourites error', error: e, stackTrace: st);
@@ -48,60 +91,77 @@ class FavouritesCubit extends Cubit<FavouritesState> {
   }
 
   Future<void> toggleDoctorFavourite(String doctorId) async {
-    final current = state;
-    if (current is! FavouritesLoaded) return;
+    if (kUseProfileMockData) {
+      final current = state;
+      if (current is! FavouritesLoaded) return;
+      emit(
+        FavouritesLoaded(
+          favoriteDoctors:
+              current.favoriteDoctors.where((d) => d.documentId != doctorId).toList(),
+          favoriteHospitals: current.favoriteHospitals,
+        ),
+      );
+      return;
+    }
 
-    final exists = current.favoriteDoctors.any((d) => d.id == doctorId);
-    if (!exists) return;
-
-    final updatedDoctors =
-        current.favoriteDoctors.where((d) => d.id != doctorId).toList();
-    emit(
-      FavouritesLoaded(
-        favoriteDoctors: updatedDoctors,
-        favoriteHospitals: current.favoriteHospitals,
-      ),
-    );
-
-    if (kUseProfileMockData) return;
+    final trimmedId = doctorId.trim();
+    if (trimmedId.isEmpty) return;
 
     try {
       await _doctorsRepository.toggleDoctorFavorite(
-        doctorId: doctorId,
+        doctorId: trimmedId,
         isFavorite: false,
       );
     } catch (e, st) {
       developer.log('toggleDoctorFavourite error', error: e, stackTrace: st);
-      await loadFavourites();
+      emit(FavouritesError(e.toString()));
     }
   }
 
   Future<void> toggleHospitalFavourite(String hospitalId) async {
-    final current = state;
-    if (current is! FavouritesLoaded) return;
+    if (kUseProfileMockData) {
+      final current = state;
+      if (current is! FavouritesLoaded) return;
+      emit(
+        FavouritesLoaded(
+          favoriteDoctors: current.favoriteDoctors,
+          favoriteHospitals: current.favoriteHospitals
+              .where((h) => h.id != hospitalId)
+              .toList(),
+        ),
+      );
+      return;
+    }
 
-    final exists = current.favoriteHospitals.any((h) => h.id == hospitalId);
-    if (!exists) return;
-
-    final updatedHospitals =
-        current.favoriteHospitals.where((h) => h.id != hospitalId).toList();
-    emit(
-      FavouritesLoaded(
-        favoriteDoctors: current.favoriteDoctors,
-        favoriteHospitals: updatedHospitals,
-      ),
-    );
-
-    if (kUseProfileMockData) return;
+    final trimmedId = hospitalId.trim();
+    if (trimmedId.isEmpty) return;
 
     try {
       await _doctorsRepository.toggleHospitalFavorite(
-        hospitalId: hospitalId,
+        hospitalId: trimmedId,
         isFavorite: false,
       );
+      final result = await _favouritesRepository.loadFavourites();
+      _latestHospitals = List<HospitalModel>.from(result.hospitals);
+      final current = state;
+      if (current is FavouritesLoaded) {
+        emit(
+          FavouritesLoaded(
+            favoriteDoctors: current.favoriteDoctors,
+            favoriteHospitals: _latestHospitals,
+          ),
+        );
+      }
     } catch (e, st) {
       developer.log('toggleHospitalFavourite error', error: e, stackTrace: st);
-      await loadFavourites();
+      emit(FavouritesError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _doctorsSubscription?.cancel();
+    _hospitalsSubscription?.cancel();
+    return super.close();
   }
 }

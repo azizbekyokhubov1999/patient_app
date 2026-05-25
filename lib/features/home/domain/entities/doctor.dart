@@ -14,6 +14,7 @@ class Doctor {
     required this.experienceYears,
     required this.workingHours,
     required this.address,
+    this.phone = '',
     required this.latitude,
     required this.longitude,
     required this.patientReviews,
@@ -34,6 +35,7 @@ class Doctor {
   final int experienceYears;
   final List<WorkingHoursEntry> workingHours;
   final String address;
+  final String phone;
   final double latitude;
   final double longitude;
   final List<DoctorReview> patientReviews;
@@ -54,6 +56,7 @@ class Doctor {
     int? experienceYears,
     List<WorkingHoursEntry>? workingHours,
     String? address,
+    String? phone,
     double? latitude,
     double? longitude,
     List<DoctorReview>? patientReviews,
@@ -72,6 +75,7 @@ class Doctor {
       experienceYears: experienceYears ?? this.experienceYears,
       workingHours: workingHours ?? this.workingHours,
       address: address ?? this.address,
+      phone: phone ?? this.phone,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       patientReviews: patientReviews ?? this.patientReviews,
@@ -80,37 +84,8 @@ class Doctor {
     );
   }
 
-  factory Doctor.fromFirestore(Map<String, dynamic> json, String docId) {
-    final rating = (json['rating'] as num?)?.toDouble() ?? 0;
-    final reviewsCount = (json['reviewsCount'] as num?)?.toInt() ??
-        (json['reviewCount'] as num?)?.toInt() ??
-        0;
-    final imageUrl = (json['imageUrl'] as String?)?.trim() ??
-        (json['image'] as String?)?.trim() ??
-        (json['photoUrl'] as String?)?.trim() ??
-        '';
-    final lat = (json['latitude'] as num?)?.toDouble() ?? 0;
-    final lng = (json['longitude'] as num?)?.toDouble() ?? 0;
+  /// Non-empty Firestore document id, when the doctor was loaded remotely.
+  String get documentId => id?.trim() ?? '';
 
-    return Doctor(
-      id: docId,
-      name: json['name'] as String? ?? 'Doctor',
-      specialty: json['specialty'] as String? ?? '',
-      rating: rating,
-      reviewsCount: reviewsCount,
-      imageUrl: imageUrl,
-      about: json['about'] as String? ?? '',
-      patientsCount: (json['patientsCount'] as num?)?.toInt() ?? 0,
-      experienceYears: (json['experienceYears'] as num?)?.toInt() ?? 0,
-      workingHours: const [
-        WorkingHoursEntry('Monday - Friday', '09:00 am - 06:00 pm'),
-      ],
-      address: json['address'] as String? ?? '',
-      latitude: lat,
-      longitude: lng,
-      patientReviews: const [],
-      mapImageUrl: json['mapImageUrl'] as String?,
-      isFavorite: json['isFavorite'] as bool? ?? false,
-    );
-  }
+  bool get hasDocumentId => documentId.isNotEmpty;
 }

@@ -82,8 +82,8 @@ class FavouriteDoctorCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    final id = doctor.id;
-                    if (id != null) {
+                    final id = doctor.documentId;
+                    if (id.isNotEmpty) {
                       context
                           .read<FavouritesCubit>()
                           .toggleDoctorFavourite(id);

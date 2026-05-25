@@ -13,13 +13,30 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
     double currentLat = 0,
     double currentLng = 0,
   }) async {
-    final doctorsFuture = _doctorsRepository.getFavoriteDoctors();
-    final hospitalsFuture = _doctorsRepository.getFavoriteHospitals(
+    final doctors = await _doctorsRepository.getFavoriteDoctors();
+    final hospitals = await _doctorsRepository.getFavoriteHospitals(
       currentLat: currentLat,
       currentLng: currentLng,
     );
-    final doctors = await doctorsFuture;
-    final hospitals = await hospitalsFuture;
     return (doctors: doctors, hospitals: hospitals);
+  }
+
+  @override
+  Stream<List<Doctor>> watchFavoriteDoctors() {
+    return _doctorsRepository.watchFavoriteDoctors();
+  }
+
+  @override
+  Stream<List<Hospital>> watchFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  }) {
+    // Hospitals: one-shot refresh on doctor stream updates (no hospital snapshot yet).
+    return watchFavoriteDoctors().asyncMap((_) async {
+      return _doctorsRepository.getFavoriteHospitals(
+        currentLat: currentLat,
+        currentLng: currentLng,
+      );
+    });
   }
 }

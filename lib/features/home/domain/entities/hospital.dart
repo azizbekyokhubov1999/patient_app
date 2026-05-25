@@ -223,7 +223,25 @@ class Hospital {
         if (raw is! Map) continue;
         final mm = Map<String, dynamic>.from(raw);
         final sid = mm['id'] as String? ?? 'spec_$i';
-        out.add(Doctor.fromFirestore(mm, sid));
+        out.add(
+          Doctor(
+            id: sid,
+            name: mm['name'] as String? ?? 'Doctor',
+            specialty: mm['specialty'] as String? ?? '',
+            rating: (mm['rating'] as num?)?.toDouble() ?? 0,
+            reviewsCount: (mm['reviewsCount'] as num?)?.toInt() ?? 0,
+            imageUrl: (mm['imageUrl'] as String?)?.trim() ?? '',
+            about: mm['about'] as String? ?? '',
+            patientsCount: (mm['patientsCount'] as num?)?.toInt() ?? 0,
+            experienceYears: (mm['experienceYears'] as num?)?.toInt() ?? 0,
+            workingHours: const [],
+            address: mm['address'] as String? ?? '',
+            latitude: (mm['latitude'] as num?)?.toDouble() ?? 0,
+            longitude: (mm['longitude'] as num?)?.toDouble() ?? 0,
+            patientReviews: const [],
+            isFavorite: mm['isFavorite'] as bool? ?? false,
+          ),
+        );
       }
       specialistsParsed = out;
     }

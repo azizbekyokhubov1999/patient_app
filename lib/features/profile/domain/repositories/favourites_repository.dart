@@ -6,4 +6,11 @@ abstract class FavouritesRepository {
     double currentLat = 0,
     double currentLng = 0,
   });
+
+  Stream<List<Doctor>> watchFavoriteDoctors();
+
+  Stream<List<Hospital>> watchFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  });
 }

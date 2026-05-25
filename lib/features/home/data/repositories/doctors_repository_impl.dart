@@ -9,6 +9,11 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   final DoctorRemoteDataSource _remote;
 
   @override
+  Future<Doctor?> getDoctorById(String doctorId) {
+    return _remote.getDoctorById(doctorId);
+  }
+
+  @override
   Future<List<Doctor>> getTopDoctors({
     String? specialty,
     int limit = 30,
@@ -19,6 +24,16 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   @override
   Future<List<Doctor>> getFavoriteDoctors() {
     return _remote.getFavoriteDoctors();
+  }
+
+  @override
+  Stream<List<Doctor>> watchFavoriteDoctors() {
+    return _remote.watchFavoriteDoctors();
+  }
+
+  @override
+  Stream<bool> watchDoctorFavorite(String doctorId) {
+    return _remote.watchDoctorFavorite(doctorId);
   }
 
   @override

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../booking/presentation/utils/booking_navigation.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/link_launcher.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/doctor_review.dart';
 import '../../domain/entities/working_hours_entry.dart';
@@ -21,21 +25,80 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   static const int _aboutPreviewLength = 160;
   bool _aboutExpanded = false;
   bool _favorite = false;
+  bool _favoriteBusy = false;
+  late Doctor _doctor;
+  StreamSubscription<bool>? _favoriteSubscription;
   final TextEditingController _reviewSearchController = TextEditingController();
   String _reviewQuery = '';
   final Set<String> _selectedFilters = {'Verified', 'Latest'};
   late List<DoctorReview> _reviews;
 
-  Doctor get _d => widget.doctor;
+  Doctor get _d => _doctor;
 
   @override
   void initState() {
     super.initState();
-    _reviews = List<DoctorReview>.from(_d.patientReviews);
+    _doctor = widget.doctor;
+    _favorite = _doctor.isFavorite;
+    _reviews = List<DoctorReview>.from(_doctor.patientReviews);
+    _refreshDoctorFromFirestore();
+    _listenToFavoriteChanges();
+  }
+
+  Future<void> _refreshDoctorFromFirestore() async {
+    final id = _doctor.documentId;
+    if (id.isEmpty) return;
+
+    try {
+      final fresh =
+          await AppDependencies.instance.doctorsRepository.getDoctorById(id);
+      if (!mounted || fresh == null) return;
+      setState(() {
+        _doctor = fresh;
+        _favorite = fresh.isFavorite;
+        _reviews = List<DoctorReview>.from(fresh.patientReviews);
+      });
+    } catch (_) {}
+  }
+
+  void _listenToFavoriteChanges() {
+    final id = _doctor.documentId;
+    if (id.isEmpty) return;
+
+    _favoriteSubscription?.cancel();
+    _favoriteSubscription = AppDependencies.instance.doctorsRepository
+        .watchDoctorFavorite(id)
+        .listen((isFavorite) {
+      if (!mounted) return;
+      setState(() => _favorite = isFavorite);
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    final id = _doctor.documentId;
+    if (id.isEmpty || _favoriteBusy) return;
+
+    final next = !_favorite;
+    setState(() {
+      _favorite = next;
+      _favoriteBusy = true;
+    });
+
+    try {
+      await AppDependencies.instance.doctorsRepository.toggleDoctorFavorite(
+        doctorId: id,
+        isFavorite: next,
+      );
+    } catch (_) {
+      if (mounted) setState(() => _favorite = !next);
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
+    }
   }
 
   @override
   void dispose() {
+    _favoriteSubscription?.cancel();
     _reviewSearchController.dispose();
     super.dispose();
   }
@@ -67,11 +130,14 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final aboutText = _d.about;
-    final showReadMore = aboutText.length > _aboutPreviewLength;
-    final aboutDisplay = (!_aboutExpanded && showReadMore)
-        ? '${aboutText.substring(0, _aboutPreviewLength).trim()}…'
+    final aboutText = _d.about.trim();
+    final aboutBody = aboutText.isEmpty
+        ? 'No biography available for this doctor yet.'
         : aboutText;
+    final showReadMore = aboutBody.length > _aboutPreviewLength;
+    final aboutDisplay = (!_aboutExpanded && showReadMore)
+        ? '${aboutBody.substring(0, _aboutPreviewLength).trim()}…'
+        : aboutBody;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -107,7 +173,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       icon: LucideIcons.heart,
                       iconColor: _favorite ? Colors.red : Colors.grey,
                       iconFill: _favorite ? 1 : 0,
-                      onTap: () => setState(() => _favorite = !_favorite),
+                      onTap: _favoriteBusy ? () {} : _toggleFavorite,
                     ),
                   ],
                 ),
@@ -276,7 +342,16 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundImage: NetworkImage(_d.imageUrl),
+                        backgroundColor: AppColors.neutral200,
+                        backgroundImage: _d.imageUrl.trim().isNotEmpty
+                            ? NetworkImage(_d.imageUrl)
+                            : null,
+                        child: _d.imageUrl.trim().isEmpty
+                            ? const Icon(
+                                LucideIcons.userRound,
+                                color: AppColors.secondaryText,
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -306,7 +381,11 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       const SizedBox(width: 8),
                       _CircleActionIcon(
                         icon: LucideIcons.phone,
-                        onTap: () => debugPrint('Call tapped'),
+                        onTap: () {
+                          final phone = _d.phone.trim();
+                          if (phone.isEmpty) return;
+                          LinkLauncher.openExternalUrl('tel:$phone');
+                        },
                       ),
                     ],
                   ),
@@ -320,30 +399,38 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ..._d.workingHours.map(
-                  (WorkingHoursEntry e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            e.daysLabel,
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: AppColors.secondaryText,
+                if (_d.workingHours.isEmpty)
+                  Text(
+                    'Working hours not listed yet.',
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: AppColors.secondaryText,
+                    ),
+                  )
+                else
+                  ..._d.workingHours.map(
+                    (WorkingHoursEntry e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              e.daysLabel,
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: AppColors.secondaryText,
+                              ),
                             ),
                           ),
-                        ),
-                        Text(
-                          e.hoursLabel,
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: AppColors.primaryText,
-                            fontWeight: FontWeight.w700,
+                          Text(
+                            e.hoursLabel,
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: AppColors.primaryText,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -381,7 +468,9 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        _d.address,
+                        _d.address.trim().isEmpty
+                            ? 'Address not available'
+                            : _d.address,
                         style: textTheme.bodyMedium?.copyWith(
                           color: AppColors.secondaryText,
                           height: 1.45,
@@ -640,22 +729,24 @@ class _StatsRow extends StatelessWidget {
     final stats = <({IconData icon, String value, String label})>[
       (
         icon: LucideIcons.users,
-        value: '${_formatThousands(doctor.patientsCount)}+',
+        value: _statValue(doctor.patientsCount),
         label: 'Patients',
       ),
       (
         icon: LucideIcons.briefcase,
-        value: '${doctor.experienceYears}+',
+        value: _statValue(doctor.experienceYears),
         label: 'Years Exp',
       ),
       (
         icon: LucideIcons.star,
-        value: '${doctor.rating.toStringAsFixed(1)}+',
+        value: doctor.rating > 0
+            ? doctor.rating.toStringAsFixed(1)
+            : '—',
         label: 'Rating',
       ),
       (
         icon: LucideIcons.messageCircle,
-        value: '${_formatThousands(doctor.reviewsCount)}+',
+        value: _statValue(doctor.reviewsCount),
         label: 'Reviews',
       ),
     ];
@@ -717,6 +808,11 @@ class _StatsRow extends StatelessWidget {
           )
           .toList(),
     );
+  }
+
+  static String _statValue(int n) {
+    if (n <= 0) return '—';
+    return '${_formatThousands(n)}+';
   }
 
   static String _formatThousands(int n) {
