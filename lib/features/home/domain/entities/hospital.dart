@@ -294,7 +294,7 @@ class Hospital {
       mapImageUrl: mapImageUrl,
       distanceInMiles: milesNonNull,
       durationInMinutes: durationMinutes > 0 ? durationMinutes : 0,
-      isFavorite: false,
+      isFavorite: data['isFavorite'] as bool? ?? false,
     );
   }
 }

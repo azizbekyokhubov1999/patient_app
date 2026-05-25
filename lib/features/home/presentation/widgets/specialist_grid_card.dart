@@ -56,17 +56,12 @@ class SpecialistGridCard extends StatelessWidget {
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: AppColors.neutral200,
-                        backgroundImage: doctor.imageUrl.isNotEmpty
-                            ? NetworkImage(doctor.imageUrl)
-                            : null,
-                        child: doctor.imageUrl.isEmpty
-                            ? Icon(
-                                LucideIcons.userRound,
-                                size: 28,
-                                color: AppColors.secondaryText
-                                    .withValues(alpha: 0.5),
-                              )
-                            : null,
+                        child: ClipOval(
+                          child: _DoctorAvatarImage(
+                            imageUrl: doctor.imageUrl,
+                            size: 56,
+                          ),
+                        ),
                       ),
                       Positioned(
                         right: -2,
@@ -172,6 +167,48 @@ class SpecialistGridCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DoctorAvatarImage extends StatelessWidget {
+  const _DoctorAvatarImage({required this.imageUrl, required this.size});
+
+  final String imageUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Icon(
+      LucideIcons.userRound,
+      size: size * 0.5,
+      color: AppColors.secondaryText.withValues(alpha: 0.5),
+    );
+
+    final url = imageUrl.trim();
+    if (url.isEmpty) {
+      return SizedBox(width: size, height: size, child: Center(child: placeholder));
+    }
+
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Center(child: placeholder),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: SizedBox(
+            width: size * 0.35,
+            height: size * 0.35,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary.withValues(alpha: 0.6),
+            ),
+          ),
+        );
+      },
     );
   }
 }

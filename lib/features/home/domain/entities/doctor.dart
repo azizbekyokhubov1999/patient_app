@@ -18,6 +18,7 @@ class Doctor {
     required this.longitude,
     required this.patientReviews,
     this.mapImageUrl,
+    this.isFavorite = false,
   });
 
   /// Firestore document id when loaded remotely.
@@ -38,6 +39,9 @@ class Doctor {
   final List<DoctorReview> patientReviews;
   final String? mapImageUrl;
 
+  /// Persisted on the `doctors/{docId}` document in Firestore.
+  final bool isFavorite;
+
   Doctor copyWith({
     String? id,
     String? name,
@@ -54,6 +58,7 @@ class Doctor {
     double? longitude,
     List<DoctorReview>? patientReviews,
     String? mapImageUrl,
+    bool? isFavorite,
   }) {
     return Doctor(
       id: id ?? this.id,
@@ -71,6 +76,7 @@ class Doctor {
       longitude: longitude ?? this.longitude,
       patientReviews: patientReviews ?? this.patientReviews,
       mapImageUrl: mapImageUrl ?? this.mapImageUrl,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -79,8 +85,10 @@ class Doctor {
     final reviewsCount = (json['reviewsCount'] as num?)?.toInt() ??
         (json['reviewCount'] as num?)?.toInt() ??
         0;
-    final imageUrl = json['imageUrl'] as String? ??
-        'https://picsum.photos/200/200?random=$docId';
+    final imageUrl = (json['imageUrl'] as String?)?.trim() ??
+        (json['image'] as String?)?.trim() ??
+        (json['photoUrl'] as String?)?.trim() ??
+        '';
     final lat = (json['latitude'] as num?)?.toDouble() ?? 0;
     final lng = (json['longitude'] as num?)?.toDouble() ?? 0;
 
@@ -102,6 +110,7 @@ class Doctor {
       longitude: lng,
       patientReviews: const [],
       mapImageUrl: json['mapImageUrl'] as String?,
+      isFavorite: json['isFavorite'] as bool? ?? false,
     );
   }
 }

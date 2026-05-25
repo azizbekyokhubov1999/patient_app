@@ -6,12 +6,30 @@ import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../auth/presentation/manager/auth_cubit.dart';
+import '../../../auth/presentation/manager/auth_state.dart';
 import '../manager/profile_cubit.dart';
 import '../manager/profile_state.dart';
 import '../widgets/profile_menu_item.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated) {
+        context.read<ProfileCubit>().loadUserProfile();
+      }
+    });
+  }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -54,8 +72,8 @@ class ProfilePage extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    final success = await context.read<ProfileCubit>().logout();
-    if (success && context.mounted) {
+    await context.read<AuthCubit>().signOut();
+    if (context.mounted) {
       context.go(AppPaths.signIn);
     }
   }
@@ -92,118 +110,166 @@ class ProfilePage extends StatelessWidget {
                 style: AppTextStyles.headlineSmall,
               ),
             ),
-      body: BlocBuilder<ProfileCubit, ProfileState>(
-        builder: (context, state) {
-          if (state.status == ProfileState.loading &&
-              state.user == null) {
-            return const Center(child: CircularProgressIndicator());
+      body: BlocListener<AuthCubit, AuthState>(
+        listenWhen: (previous, current) =>
+            current is Unauthenticated ||
+            (current is Authenticated && previous is! Authenticated),
+        listener: (context, authState) {
+          if (authState is Unauthenticated) {
+            context.go(AppPaths.signIn);
+            return;
           }
-
-          if (state.status == ProfileState.failure && state.user == null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      state.errorMessage ?? 'Failed to load profile',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.secondaryText),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () =>
-                          context.read<ProfileCubit>().loadUserProfile(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
+          if (authState is Authenticated) {
+            context.read<ProfileCubit>().loadUserProfile();
           }
-
-          final user = state.user;
-          final displayName = user?.displayName ?? 'Jennifer Aaker';
-          final photoUrl = user?.photoUrl ?? '';
-
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                _ProfileHeader(
-                  displayName: displayName,
-                  photoUrl: photoUrl,
-                  isUpdatingAvatar:
-                      state.status == ProfileState.updatingAvatar,
-                  onEditAvatar: () =>
-                      context.read<ProfileCubit>().updateProfilePicture(),
-                ),
-                const SizedBox(height: 28),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.person_outline,
-                  title: 'Your profile',
-                  onTap: () async {
-                    await context.push(AppPaths.editProfile);
-                    if (context.mounted) {
-                      context.read<ProfileCubit>().loadUserProfile();
-                    }
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.credit_card_outlined,
-                  title: 'Payment Methods',
-                  onTap: () => _openPaymentMethods(context),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.favorite_border_outlined,
-                  title: 'My Favourites',
-                  onTap: () => context.push(AppPaths.myFavourites),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.confirmation_number_outlined,
-                  title: 'My Coupons',
-                  onTap: () => context.push(AppPaths.myCoupons),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'My Wallet',
-                  onTap: () => context.push(AppPaths.myWallet),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.settings_outlined,
-                  title: 'Settings',
-                  onTap: () => context.push(AppPaths.settings),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.info_outline,
-                  title: 'Help Center',
-                  onTap: () => context.push(AppPaths.helpCenter),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.lock_outline,
-                  title: 'Privacy Policy',
-                  onTap: () => context.push(AppPaths.privacyPolicy),
-                ),
-                const Divider(height: 1, color: AppColors.stroke),
-                ProfileMenuItem(
-                  icon: Icons.logout_outlined,
-                  title: 'Log out',
-                  onTap: () => _showLogoutDialog(context),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
         },
+        child: BlocBuilder<AuthCubit, AuthState>(
+          builder: (context, authState) {
+            if (authState is! Authenticated) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Sign in to view your profile',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.secondaryText),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () => context.go(AppPaths.signIn),
+                        child: const Text('Sign In'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return BlocBuilder<ProfileCubit, ProfileState>(
+              builder: (context, state) {
+                if (state.status == ProfileState.loading &&
+                    state.user == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state.status == ProfileState.failure &&
+                    state.user == null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            state.errorMessage ?? 'Failed to load profile',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: () => context
+                                .read<ProfileCubit>()
+                                .loadUserProfile(),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final user = state.user;
+                final displayName =
+                    user?.displayName ?? authState.user.name;
+                final photoUrl =
+                    user?.photoUrl ?? authState.user.photoUrl;
+
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      _ProfileHeader(
+                        displayName: displayName,
+                        photoUrl: photoUrl,
+                        isUpdatingAvatar:
+                            state.status == ProfileState.updatingAvatar,
+                        onEditAvatar: () => context
+                            .read<ProfileCubit>()
+                            .updateProfilePicture(),
+                      ),
+                      const SizedBox(height: 28),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.person_outline,
+                        title: 'Your profile',
+                        onTap: () async {
+                          await context.push(AppPaths.editProfile);
+                          if (context.mounted) {
+                            context.read<ProfileCubit>().loadUserProfile();
+                          }
+                        },
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.credit_card_outlined,
+                        title: 'Payment Methods',
+                        onTap: () => _openPaymentMethods(context),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.favorite_border_outlined,
+                        title: 'My Favourites',
+                        onTap: () => context.push(AppPaths.myFavourites),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.confirmation_number_outlined,
+                        title: 'My Coupons',
+                        onTap: () => context.push(AppPaths.myCoupons),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.account_balance_wallet_outlined,
+                        title: 'My Wallet',
+                        onTap: () => context.push(AppPaths.myWallet),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.settings_outlined,
+                        title: 'Settings',
+                        onTap: () => context.push(AppPaths.settings),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.info_outline,
+                        title: 'Help Center',
+                        onTap: () => context.push(AppPaths.helpCenter),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.lock_outline,
+                        title: 'Privacy Policy',
+                        onTap: () => context.push(AppPaths.privacyPolicy),
+                      ),
+                      const Divider(height: 1, color: AppColors.stroke),
+                      ProfileMenuItem(
+                        icon: Icons.logout_outlined,
+                        title: 'Log out',
+                        onTap: () => _showLogoutDialog(context),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,32 +1,29 @@
 import 'dart:developer' as developer;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/mock_data.dart';
-import '../../../home/domain/entities/doctor.dart';
-import '../../../home/domain/entities/hospital.dart';
+import '../../../home/domain/repositories/doctors_repository.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/hospital_model.dart';
+import '../../domain/repositories/favourites_repository.dart';
 import 'favourites_state.dart';
 
 class FavouritesCubit extends Cubit<FavouritesState> {
   FavouritesCubit({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
+    required FavouritesRepository favouritesRepository,
+    required DoctorsRepository doctorsRepository,
+  })  : _favouritesRepository = favouritesRepository,
+        _doctorsRepository = doctorsRepository,
         super(const FavouritesInitial());
 
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
+  final FavouritesRepository _favouritesRepository;
+  final DoctorsRepository _doctorsRepository;
 
   Future<void> loadFavourites() async {
     emit(const FavouritesLoading());
 
     if (kUseProfileMockData) {
-      await Future<void>.delayed(const Duration(milliseconds: 500));
       emit(
         FavouritesLoaded(
           favoriteDoctors: List<DoctorModel>.from(mockFavoriteDoctors),
@@ -37,22 +34,11 @@ class FavouritesCubit extends Cubit<FavouritesState> {
     }
 
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) {
-        emit(const FavouritesError('No signed-in user'));
-        return;
-      }
-
-      final doctorIds = await _loadFavoriteIds(uid, 'favorite_doctors');
-      final hospitalIds = await _loadFavoriteIds(uid, 'favorite_hospitals');
-
-      final doctors = await _fetchDoctors(doctorIds);
-      final hospitals = await _fetchHospitals(hospitalIds);
-
+      final result = await _favouritesRepository.loadFavourites();
       emit(
         FavouritesLoaded(
-          favoriteDoctors: doctors,
-          favoriteHospitals: hospitals,
+          favoriteDoctors: result.doctors,
+          favoriteHospitals: result.hospitals,
         ),
       );
     } catch (e, st) {
@@ -77,10 +63,17 @@ class FavouritesCubit extends Cubit<FavouritesState> {
       ),
     );
 
-    await _deleteFavorite(
-      collection: 'favorite_doctors',
-      itemId: doctorId,
-    );
+    if (kUseProfileMockData) return;
+
+    try {
+      await _doctorsRepository.toggleDoctorFavorite(
+        doctorId: doctorId,
+        isFavorite: false,
+      );
+    } catch (e, st) {
+      developer.log('toggleDoctorFavourite error', error: e, stackTrace: st);
+      await loadFavourites();
+    }
   }
 
   Future<void> toggleHospitalFavourite(String hospitalId) async {
@@ -99,70 +92,15 @@ class FavouritesCubit extends Cubit<FavouritesState> {
       ),
     );
 
-    await _deleteFavorite(
-      collection: 'favorite_hospitals',
-      itemId: hospitalId,
-    );
-  }
-
-  Future<Set<String>> _loadFavoriteIds(String uid, String collection) async {
-    final snap = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection(collection)
-        .get();
-    return snap.docs.map((d) => d.id).toSet();
-  }
-
-  Future<List<DoctorModel>> _fetchDoctors(Set<String> ids) async {
-    if (ids.isEmpty) return const [];
-
-    final futures = ids.map((id) async {
-      final doc = await _firestore.collection('doctors').doc(id).get();
-      if (!doc.exists) return null;
-      return Doctor.fromFirestore(doc.data() ?? {}, doc.id);
-    });
-
-    final results = await Future.wait(futures);
-    return results.whereType<Doctor>().toList();
-  }
-
-  Future<List<HospitalModel>> _fetchHospitals(Set<String> ids) async {
-    if (ids.isEmpty) return const [];
-
-    final futures = ids.map((id) async {
-      final doc = await _firestore.collection('hospitals').doc(id).get();
-      if (!doc.exists) return null;
-      return Hospital.fromFirestore(
-        doc.data() ?? {},
-        doc.id,
-        currentLat: 0,
-        currentLng: 0,
-      );
-    });
-
-    final results = await Future.wait(futures);
-    return results.whereType<Hospital>().toList();
-  }
-
-  Future<void> _deleteFavorite({
-    required String collection,
-    required String itemId,
-  }) async {
     if (kUseProfileMockData) return;
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-
     try {
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection(collection)
-          .doc(itemId)
-          .delete();
+      await _doctorsRepository.toggleHospitalFavorite(
+        hospitalId: hospitalId,
+        isFavorite: false,
+      );
     } catch (e, st) {
-      developer.log('toggle favourite delete error', error: e, stackTrace: st);
+      developer.log('toggleHospitalFavourite error', error: e, stackTrace: st);
       await loadFavourites();
     }
   }

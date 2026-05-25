@@ -29,15 +29,7 @@ class VerifiedDoctorAvatar extends StatelessWidget {
           CircleAvatar(
             radius: radius,
             backgroundColor: AppColors.neutral200,
-            backgroundImage:
-                imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-            child: imageUrl.isEmpty
-                ? Icon(
-                    Icons.person_rounded,
-                    size: radius,
-                    color: AppColors.secondaryText.withValues(alpha: 0.45),
-                  )
-                : null,
+            child: ClipOval(child: _AvatarImage(imageUrl: imageUrl, size: radius * 2)),
           ),
           Positioned(
             right: 0,
@@ -46,6 +38,47 @@ class VerifiedDoctorAvatar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AvatarImage extends StatelessWidget {
+  const _AvatarImage({required this.imageUrl, required this.size});
+
+  final String imageUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Icon(
+      Icons.person_rounded,
+      size: size * 0.5,
+      color: AppColors.secondaryText.withValues(alpha: 0.45),
+    );
+
+    if (imageUrl.isEmpty) {
+      return SizedBox(width: size, height: size, child: Center(child: placeholder));
+    }
+
+    return Image.network(
+      imageUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Center(child: placeholder),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: SizedBox(
+            width: size * 0.35,
+            height: size * 0.35,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary.withValues(alpha: 0.6),
+            ),
+          ),
+        );
+      },
     );
   }
 }

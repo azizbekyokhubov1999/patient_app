@@ -1,10 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class VerifyCodePage extends StatefulWidget {
   const VerifyCodePage({super.key});
@@ -15,6 +17,7 @@ class VerifyCodePage extends StatefulWidget {
 
 class _VerifyCodePageState extends State<VerifyCodePage> {
   final _controllers = List.generate(4, (_) => TextEditingController());
+  String? _submittedCode;
 
   @override
   void dispose() {
@@ -24,25 +27,62 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
     super.dispose();
   }
 
+  Future<void> _handleVerificationError(
+    BuildContext context,
+    String message,
+  ) async {
+    final isSessionError = message.contains('No active session');
+    final usedMockOtp = _submittedCode == AuthCubit.mockOtpCode;
+
+    if (isSessionError && usedMockOtp) {
+      final cubit = context.read<AuthCubit>();
+      final recovered = await cubit.tryRecoverVerificationSession();
+      if (!context.mounted) return;
+
+      if (recovered) {
+        return;
+      }
+
+      await FirebaseAuth.instance.currentUser?.reload();
+      if (!context.mounted) return;
+
+      if (FirebaseAuth.instance.currentUser != null) {
+        cubit.clearCompletedFlow();
+        context.go(AppPaths.yourLocation);
+        return;
+      }
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.verifyCode && current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.verifyCode) ||
+          (current is AuthError && current.flow == AuthFlow.verifyCode),
       listener: (context, state) {
-        if (state is AuthSuccess && state.action == AuthAction.verifyCode) {
-          context.push(AppPaths.completeProfile);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.verifyCode) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.verifyCode) {
+          context.read<AuthCubit>().clearCompletedFlow();
+          if (state.isProfileComplete) {
+            context.go(AppPaths.home);
+          } else {
+            context.push(AppPaths.completeProfile);
+          }
+        } else if (state is AuthError && state.flow == AuthFlow.verifyCode) {
+          _handleVerificationError(context, state.message);
         }
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.verifyCode;
+            state is AuthLoading && state.flow == AuthFlow.verifyCode;
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(
@@ -197,9 +237,10 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
                                                 controller.text.trim(),
                                           )
                                           .join();
-                                      context.read<AuthCubit>().verifyCode(
-                                        code: code,
-                                      );
+                                      _submittedCode = code;
+                                      context
+                                          .read<AuthCubit>()
+                                          .completeVerification(code: code);
                                     },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,

@@ -5,7 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -50,11 +51,19 @@ class _SignInPageState extends State<SignInPage> {
 
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.signIn && current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.signIn) ||
+          (current is AuthError && current.flow == AuthFlow.signIn),
       listener: (context, state) {
-        if (state is AuthSuccess && state.action == AuthAction.signIn) {
-          context.go(AppPaths.home);
-        } else if (state is AuthFailure && state.action == AuthAction.signIn) {
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.signIn) {
+          context.read<AuthCubit>().clearCompletedFlow();
+          context.go(
+            state.isProfileComplete
+                ? AppPaths.home
+                : AppPaths.completeProfile,
+          );
+        } else if (state is AuthError && state.flow == AuthFlow.signIn) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -62,7 +71,7 @@ class _SignInPageState extends State<SignInPage> {
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.signIn;
+            state is AuthLoading && state.flow == AuthFlow.signIn;
         return Scaffold(
           backgroundColor: AppColors.primary,
           body: SafeArea(

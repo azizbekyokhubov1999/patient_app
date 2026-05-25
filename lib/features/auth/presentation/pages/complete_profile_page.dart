@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class CompleteProfilePage extends StatefulWidget {
   const CompleteProfilePage({super.key});
@@ -60,14 +61,16 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
 
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.completeProfile &&
-          current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.completeProfile) ||
+          (current is AuthError && current.flow == AuthFlow.completeProfile),
       listener: (context, state) {
-        if (state is AuthSuccess &&
-            state.action == AuthAction.completeProfile) {
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.completeProfile) {
+          context.read<AuthCubit>().clearCompletedFlow();
           context.push(AppPaths.yourLocation);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.completeProfile) {
+        } else if (state is AuthError &&
+            state.flow == AuthFlow.completeProfile) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -75,7 +78,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.completeProfile;
+            state is AuthLoading && state.flow == AuthFlow.completeProfile;
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(

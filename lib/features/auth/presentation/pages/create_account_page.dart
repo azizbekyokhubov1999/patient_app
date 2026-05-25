@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class CreateAccountPage extends StatefulWidget {
   const CreateAccountPage({super.key});
@@ -35,12 +36,16 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     final textTheme = Theme.of(context).textTheme;
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.createAccount && current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.createAccount) ||
+          (current is AuthError && current.flow == AuthFlow.createAccount),
       listener: (context, state) {
-        if (state is AuthSuccess && state.action == AuthAction.createAccount) {
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.createAccount) {
+          context.read<AuthCubit>().clearCompletedFlow();
           context.push(AppPaths.verifyCode);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.createAccount) {
+        } else if (state is AuthError &&
+            state.flow == AuthFlow.createAccount) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -48,7 +53,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.createAccount;
+            state is AuthLoading && state.flow == AuthFlow.createAccount;
         return Scaffold(
           backgroundColor: AppColors.primary,
           body: SafeArea(

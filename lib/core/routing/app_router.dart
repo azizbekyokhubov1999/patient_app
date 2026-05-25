@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../di/app_dependencies.dart';
+
 import '../../features/auth/presentation/pages/complete_profile_page.dart';
 import '../../features/auth/presentation/pages/create_account_page.dart';
 import '../../features/auth/presentation/pages/enter_location_page.dart';
@@ -65,7 +67,6 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/filter_page.dart';
 import '../../features/home/presentation/pages/search_page.dart';
 import '../../features/home/presentation/pages/services_page.dart';
-import '../../features/home/presentation/manager/top_specialist_cubit.dart';
 import '../../features/home/presentation/pages/top_specialist_page.dart';
 import '../../features/home/presentation/manager/upcoming_appointment_cubit.dart';
 import '../../features/home/presentation/models/appointment_detail_args.dart';
@@ -75,13 +76,10 @@ import '../../features/home/presentation/models/filter_args.dart';
 import '../../features/home/domain/entities/filter_result.dart';
 import '../../features/main_navigation/presentation/pages/main_wrapper_page.dart';
 import '../../features/notification/presentation/pages/notification_page.dart';
-import '../../features/profile/presentation/manager/profile_cubit.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/your_profile_page.dart';
 import '../../features/profile/presentation/pages/profile_payment_methods_page.dart';
-import '../../features/profile/presentation/manager/coupons_cubit.dart';
 import '../../features/profile/presentation/pages/my_coupons_page.dart';
-import '../../features/profile/presentation/manager/favourites_cubit.dart';
 import '../../features/profile/presentation/pages/help_center_page.dart';
 import '../../features/profile/presentation/pages/privacy_policy_page.dart';
 import '../../features/profile/presentation/manager/privacy_policy_cubit.dart';
@@ -168,7 +166,8 @@ abstract final class AppRouter {
         builder: (context, state) {
           final specialty = state.extra as String?;
           return BlocProvider(
-            create: (_) => TopSpecialistCubit(initialSpecialty: specialty)
+            create: (_) => AppDependencies.instance
+                .createTopSpecialistCubit(specialty: specialty)
               ..loadTopSpecialists(),
             child: TopSpecialistPage(initialSpecialty: specialty),
           );
@@ -543,7 +542,8 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.editProfile,
         builder: (context, state) => BlocProvider(
-          create: (_) => ProfileCubit()..loadUserProfile(),
+          create: (_) => AppDependencies.instance.createProfileCubit()
+            ..loadUserProfile(),
           child: const YourProfilePage(),
         ),
       ),
@@ -594,14 +594,16 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.myFavourites,
         builder: (context, state) => BlocProvider(
-          create: (_) => FavouritesCubit()..loadFavourites(),
+          create: (_) =>
+              AppDependencies.instance.createFavouritesCubit()..loadFavourites(),
           child: const MyFavouritesPage(),
         ),
       ),
       GoRoute(
         path: AppPaths.myCoupons,
         builder: (context, state) => BlocProvider(
-          create: (_) => CouponsCubit()..loadCoupons(),
+          create: (_) =>
+              AppDependencies.instance.createCouponsCubit()..loadCoupons(),
           child: const MyCouponsPage(),
         ),
       ),
@@ -892,7 +894,8 @@ abstract final class AppRouter {
               GoRoute(
                 path: AppPaths.profile,
                 builder: (context, state) => BlocProvider(
-                  create: (_) => ProfileCubit()..loadUserProfile(),
+                  create: (_) => AppDependencies.instance.createProfileCubit()
+            ..loadUserProfile(),
                   child: const ProfilePage(),
                 ),
               ),

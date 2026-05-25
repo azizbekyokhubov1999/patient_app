@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
+/// Sends a Firebase password-reset email to the user.
 class NewPasswordPage extends StatefulWidget {
   const NewPasswordPage({super.key});
 
@@ -15,15 +17,12 @@ class NewPasswordPage extends StatefulWidget {
 
 class _NewPasswordPageState extends State<NewPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  bool _obscureNewPassword = true;
-  bool _obscureConfirmPassword = true;
+  final _emailController = TextEditingController();
+  bool _resetSubmitted = false;
 
   @override
   void dispose() {
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -31,11 +30,7 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    InputDecoration fieldDecoration({
-      required String hintText,
-      required bool obscure,
-      required VoidCallback onToggle,
-    }) {
+    InputDecoration fieldDecoration({required String hintText}) {
       return InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: AppColors.secondaryText),
@@ -53,32 +48,54 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
         ),
-        suffixIcon: IconButton(
-          onPressed: onToggle,
-          icon: Icon(
-            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: AppColors.primaryText,
-          ),
-        ),
       );
     }
 
     return BlocConsumer<AuthCubit, AuthState>(
-      listenWhen: (previous, current) =>
-          current.action == AuthAction.newPassword && current is! AuthLoading,
+      listenWhen: (previous, current) {
+        if (current is AuthError && current.flow == AuthFlow.newPassword) {
+          return true;
+        }
+        if (_resetSubmitted &&
+            previous is AuthLoading &&
+            current is! AuthLoading) {
+          return true;
+        }
+        if (current is Authenticated &&
+            current.completedFlow == AuthFlow.newPassword) {
+          return true;
+        }
+        return false;
+      },
       listener: (context, state) {
-        if (state is AuthSuccess && state.action == AuthAction.newPassword) {
+        if (state is AuthError && state.flow == AuthFlow.newPassword) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message)),
+          );
+          return;
+        }
+
+        if (_resetSubmitted &&
+            (state is Unauthenticated ||
+                (state is Authenticated &&
+                    state.completedFlow == AuthFlow.newPassword))) {
+          _resetSubmitted = false;
+          if (state is Authenticated) {
+            context.read<AuthCubit>().clearCompletedFlow();
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Password reset link sent. Check your email inbox.',
+              ),
+            ),
+          );
           context.go(AppPaths.signIn);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.newPassword) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.newPassword;
+            state is AuthLoading && state.flow == AuthFlow.newPassword;
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(
@@ -122,7 +139,7 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
                     ),
                     const SizedBox(height: 56),
                     Text(
-                      'New Password',
+                      'Forgot Password',
                       textAlign: TextAlign.center,
                       style: textTheme.headlineLarge?.copyWith(
                         color: AppColors.primaryText,
@@ -131,7 +148,7 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your new password must be different\nfrom previously used passwords.',
+                      'Enter your account email and we will send you a link to reset your password.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodyLarge?.copyWith(
                         color: AppColors.secondaryText,
@@ -139,57 +156,23 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
                     ),
                     const SizedBox(height: 46),
                     Text(
-                      'Password',
+                      'Email',
                       style: textTheme.titleMedium?.copyWith(
                         color: AppColors.primaryText,
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      controller: _newPasswordController,
-                      obscureText: _obscureNewPassword,
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: AppColors.primaryText),
-                      decoration: fieldDecoration(
-                        hintText: '***************',
-                        obscure: _obscureNewPassword,
-                        onToggle: () {
-                          setState(
-                            () => _obscureNewPassword = !_obscureNewPassword,
-                          );
-                        },
-                      ),
-                      validator: (value) => (value ?? '').length < 6
-                          ? 'Password must be at least 6 characters'
-                          : null,
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Confirm Password',
-                      style: textTheme.titleMedium?.copyWith(
-                        color: AppColors.primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: _obscureConfirmPassword,
-                      style: const TextStyle(color: AppColors.primaryText),
-                      decoration: fieldDecoration(
-                        hintText: '***************',
-                        obscure: _obscureConfirmPassword,
-                        onToggle: () {
-                          setState(
-                            () => _obscureConfirmPassword =
-                                !_obscureConfirmPassword,
-                          );
-                        },
-                      ),
+                      decoration: fieldDecoration(hintText: 'example@gmail.com'),
                       validator: (value) {
-                        if ((value ?? '').isEmpty) {
-                          return 'Confirm password is required';
-                        }
-                        if (value != _newPasswordController.text) {
-                          return 'Passwords do not match';
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return 'Email is required';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(text)) {
+                          return 'Enter a valid email';
                         }
                         return null;
                       },
@@ -201,12 +184,10 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
                         onPressed: isSubmitting
                             ? null
                             : () {
-                                if (_formKey.currentState?.validate() ??
-                                    false) {
-                                  context.read<AuthCubit>().setNewPassword(
-                                    newPassword: _newPasswordController.text,
-                                    confirmPassword:
-                                        _confirmPasswordController.text,
+                                if (_formKey.currentState?.validate() ?? false) {
+                                  _resetSubmitted = true;
+                                  context.read<AuthCubit>().sendPasswordReset(
+                                    email: _emailController.text,
                                   );
                                 }
                               },
@@ -225,7 +206,7 @@ class _NewPasswordPageState extends State<NewPasswordPage> {
                                   color: AppColors.white,
                                 ),
                               )
-                            : const Text('Create New Password'),
+                            : const Text('Send Reset Link'),
                       ),
                     ),
                   ],

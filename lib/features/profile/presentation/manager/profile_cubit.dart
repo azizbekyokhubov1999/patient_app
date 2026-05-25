@@ -1,23 +1,33 @@
 import 'dart:developer' as developer;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/mock_data.dart';
+import '../../../../core/errors/firebase_failure_mapper.dart';
 import '../../data/models/user_model.dart';
-import 'profile_state.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../domain/usecases/get_user_profile_usecase.dart';
+import '../../domain/usecases/profile_sign_out_usecase.dart';
+import '../../domain/usecases/save_user_profile_usecase.dart';
+import '../manager/profile_state.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit({
+    required GetUserProfileUseCase getUserProfileUseCase,
+    required SaveUserProfileUseCase saveUserProfileUseCase,
+    required ProfileSignOutUseCase profileSignOutUseCase,
     FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _getUserProfileUseCase = getUserProfileUseCase,
+        _saveUserProfileUseCase = saveUserProfileUseCase,
+        _profileSignOutUseCase = profileSignOutUseCase,
+        _auth = auth ?? FirebaseAuth.instance,
         super(const ProfileState());
 
+  final GetUserProfileUseCase _getUserProfileUseCase;
+  final SaveUserProfileUseCase _saveUserProfileUseCase;
+  final ProfileSignOutUseCase _profileSignOutUseCase;
   final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
 
   Future<void> loadUserProfile() async {
     emit(state.copyWith(status: ProfileStatus.loading, errorMessage: null));
@@ -46,18 +56,15 @@ class ProfileCubit extends Cubit<ProfileState> {
     }
 
     try {
-
-      final doc =
-          await _firestore.collection('users').doc(firebaseUser.uid).get();
-
-      final user = doc.exists
-          ? UserModel.fromFirestore(doc)
-          : UserModel(
+      final profile = await _getUserProfileUseCase(firebaseUser.uid);
+      final user = profile == null
+          ? UserModel(
               uid: firebaseUser.uid,
               displayName: firebaseUser.displayName ?? 'Patient',
               email: firebaseUser.email ?? '',
               photoUrl: firebaseUser.photoURL ?? '',
-            );
+            )
+          : _toUserModel(profile);
 
       emit(
         state.copyWith(
@@ -70,7 +77,7 @@ class ProfileCubit extends Cubit<ProfileState> {
       emit(
         state.copyWith(
           status: ProfileStatus.failure,
-          errorMessage: e.toString(),
+          errorMessage: FirebaseFailureMapper.map(e).message,
         ),
       );
     }
@@ -80,13 +87,10 @@ class ProfileCubit extends Cubit<ProfileState> {
     emit(state.copyWith(status: ProfileStatus.updating, errorMessage: null));
 
     try {
-      if (!kUseProfileMockData) {
-        await _firestore
-            .collection('users')
-            .doc(updatedUser.uid)
-            .set(updatedUser.toMap(), SetOptions(merge: true));
-      } else {
+      if (kUseProfileMockData) {
         await Future<void>.delayed(const Duration(milliseconds: 600));
+      } else {
+        await _saveUserProfileUseCase(_toUserProfile(updatedUser));
       }
 
       emit(
@@ -100,7 +104,7 @@ class ProfileCubit extends Cubit<ProfileState> {
       emit(
         state.copyWith(
           status: ProfileStatus.updateFailure,
-          errorMessage: e.toString(),
+          errorMessage: FirebaseFailureMapper.map(e).message,
         ),
       );
     }
@@ -132,9 +136,8 @@ class ProfileCubit extends Cubit<ProfileState> {
           'https://picsum.photos/200?profile-${DateTime.now().millisecondsSinceEpoch}';
 
       if (!kUseProfileMockData) {
-        await _firestore.collection('users').doc(current.uid).update({
-          'photoUrl': updatedPhoto,
-        });
+        final profile = _toUserProfile(current.copyWith(photoUrl: updatedPhoto));
+        await _saveUserProfileUseCase(profile);
       }
 
       emit(
@@ -147,7 +150,7 @@ class ProfileCubit extends Cubit<ProfileState> {
       emit(
         state.copyWith(
           status: ProfileStatus.failure,
-          errorMessage: e.toString(),
+          errorMessage: FirebaseFailureMapper.map(e).message,
         ),
       );
     }
@@ -155,17 +158,43 @@ class ProfileCubit extends Cubit<ProfileState> {
 
   Future<bool> logout() async {
     try {
-      await _auth.signOut();
+      await _profileSignOutUseCase();
       emit(const ProfileState(status: ProfileStatus.initial));
       return true;
     } catch (e) {
       emit(
         state.copyWith(
           status: ProfileStatus.failure,
-          errorMessage: e.toString(),
+          errorMessage: FirebaseFailureMapper.map(e).message,
         ),
       );
       return false;
     }
+  }
+
+  UserModel _toUserModel(UserProfile profile) {
+    return UserModel(
+      uid: profile.uid,
+      displayName: profile.displayName,
+      email: profile.email,
+      photoUrl: profile.photoUrl,
+      phone: profile.phone,
+      countryCode: profile.countryCode,
+      dateOfBirth: profile.dateOfBirth,
+      gender: profile.gender,
+    );
+  }
+
+  UserProfile _toUserProfile(UserModel model) {
+    return UserProfile(
+      uid: model.uid,
+      displayName: model.displayName,
+      email: model.email,
+      photoUrl: model.photoUrl,
+      phone: model.phone,
+      countryCode: model.countryCode,
+      dateOfBirth: model.dateOfBirth,
+      gender: model.gender,
+    );
   }
 }

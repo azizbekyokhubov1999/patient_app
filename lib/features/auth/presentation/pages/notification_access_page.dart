@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class NotificationAccessPage extends StatelessWidget {
   const NotificationAccessPage({super.key});
@@ -15,23 +16,25 @@ class NotificationAccessPage extends StatelessWidget {
 
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.notificationAccess &&
-          current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.notificationAccess) ||
+          (current is AuthError &&
+              current.flow == AuthFlow.notificationAccess),
       listener: (context, state) {
-        if (state is AuthSuccess &&
-            state.action == AuthAction.notificationAccess) {
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.notificationAccess) {
+          context.read<AuthCubit>().clearCompletedFlow();
           context.go(AppPaths.home);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.notificationAccess) {
+        } else if (state is AuthError &&
+            state.flow == AuthFlow.notificationAccess) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       builder: (context, state) {
-        final isSubmitting =
-            state is AuthLoading &&
-            state.action == AuthAction.notificationAccess;
+        final isSubmitting = state is AuthLoading &&
+            state.flow == AuthFlow.notificationAccess;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -117,7 +120,11 @@ class NotificationAccessPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     TextButton(
-                      onPressed: () => context.go(AppPaths.home),
+                      onPressed: isSubmitting
+                          ? null
+                          : () => context
+                              .read<AuthCubit>()
+                              .skipNotificationAccess(),
                       child: Text(
                         'Maybe Later',
                         style: textTheme.titleMedium?.copyWith(

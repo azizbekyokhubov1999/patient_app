@@ -12,7 +12,8 @@ import '../../features/payment/data/models/transaction_model.dart';
 import '../../features/profile/data/models/user_model.dart';
 
 /// Master switch for profile-section UI demos (coupons, favourites, settings, profile, wallet, payment).
-const bool kUseProfileMockData = true;
+/// Set to `false` when using Firebase Auth + Firestore for profile data.
+const bool kUseProfileMockData = false;
 
 /// Simulated wallet balance for coupon unlock rules during mock mode.
 const double mockWalletBalance = 180;

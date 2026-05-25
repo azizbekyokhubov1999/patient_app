@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../bloc/auth_cubit.dart';
+import '../manager/auth_cubit.dart';
+import '../manager/auth_state.dart';
 
 class YourLocationPage extends StatelessWidget {
   const YourLocationPage({super.key});
+
+  void _showLocationNotice(BuildContext context, Authenticated state) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(state.noticeMessage!),
+        duration: const Duration(seconds: 5),
+        action: state.offerOpenSettings
+            ? SnackBarAction(
+                label: 'Settings',
+                onPressed: () => Geolocator.openAppSettings(),
+              )
+            : null,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,21 +34,33 @@ class YourLocationPage extends StatelessWidget {
 
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
-          current.action == AuthAction.locationAccess &&
-          current is! AuthLoading,
+          (current is Authenticated &&
+              current.completedFlow == AuthFlow.locationAccess) ||
+          (current is AuthError && current.flow == AuthFlow.locationAccess),
       listener: (context, state) {
-        if (state is AuthSuccess && state.action == AuthAction.locationAccess) {
+        if (state is Authenticated &&
+            state.completedFlow == AuthFlow.locationAccess) {
+          if (state.noticeMessage != null) {
+            _showLocationNotice(context, state);
+          }
+          context.read<AuthCubit>().clearCompletedFlow();
           context.push(AppPaths.notificationAccess);
-        } else if (state is AuthFailure &&
-            state.action == AuthAction.locationAccess) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
+        } else if (state is AuthError &&
+            state.flow == AuthFlow.locationAccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              action: SnackBarAction(
+                label: 'Continue',
+                onPressed: () => context.push(AppPaths.notificationAccess),
+              ),
+            ),
+          );
         }
       },
       builder: (context, state) {
         final isSubmitting =
-            state is AuthLoading && state.action == AuthAction.locationAccess;
+            state is AuthLoading && state.flow == AuthFlow.locationAccess;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -81,9 +112,9 @@ class YourLocationPage extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: isSubmitting
                           ? null
-                          : () {
-                              context.read<AuthCubit>().requestLocationAccess();
-                            },
+                          : () => context
+                              .read<AuthCubit>()
+                              .requestLocationAccess(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
@@ -104,12 +135,26 @@ class YourLocationPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   TextButton(
-                    onPressed: () => context.push(AppPaths.enterLocation),
+                    onPressed: isSubmitting
+                        ? null
+                        : () => context.push(AppPaths.enterLocation),
                     child: Text(
                       'Enter Location Manually',
                       style: textTheme.titleMedium?.copyWith(
                         color: AppColors.yellow,
                         fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: isSubmitting
+                        ? null
+                        : () => context.push(AppPaths.notificationAccess),
+                    child: Text(
+                      'Skip for now',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.secondaryText,
                       ),
                     ),
                   ),
