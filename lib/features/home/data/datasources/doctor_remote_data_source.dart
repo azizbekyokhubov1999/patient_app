@@ -5,9 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/hospital.dart';
 import '../models/doctor_model.dart';
+import '../models/review_model.dart';
 
 abstract class DoctorRemoteDataSource {
   Future<Doctor?> getDoctorById(String doctorId);
+
+  Stream<Doctor?> watchDoctorById(String doctorId);
 
   Future<List<Doctor>> getTopDoctors({String? specialty, int limit = 30});
 
@@ -26,6 +29,17 @@ abstract class DoctorRemoteDataSource {
   });
 
   Stream<bool> watchDoctorFavorite(String doctorId);
+
+  Future<void> submitReview({
+    required String doctorId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  });
+
+  Stream<List<ReviewModel>> getDoctorReviews(String doctorId);
 
   Future<void> setHospitalFavorite({
     required String hospitalId,
@@ -47,6 +61,84 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
     final doc = await _firestore.collection('doctors').doc(trimmedId).get();
     if (!doc.exists) return null;
     return DoctorModel.fromFirestore(doc.data() ?? {}, doc.id);
+  }
+
+  @override
+  Stream<Doctor?> watchDoctorById(String doctorId) {
+    final trimmedId = doctorId.trim();
+    if (trimmedId.isEmpty) {
+      return Stream<Doctor?>.value(null);
+    }
+
+    return _firestore.collection('doctors').doc(trimmedId).snapshots().map(
+      (snapshot) {
+        if (!snapshot.exists) return null;
+        return DoctorModel.fromFirestore(snapshot.data() ?? {}, snapshot.id);
+      },
+    );
+  }
+
+  @override
+  Future<void> submitReview({
+    required String doctorId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  }) async {
+    final trimmedDoctorId = doctorId.trim();
+    if (trimmedDoctorId.isEmpty) {
+      throw ArgumentError('doctorId must be a non-empty Firestore document id');
+    }
+
+    await _firestore.runTransaction((transaction) async {
+      final doctorRef = _firestore.collection('doctors').doc(trimmedDoctorId);
+      final doctorSnap = await transaction.get(doctorRef);
+      final doctorData = doctorSnap.data() ?? {};
+
+      final currentCount = (doctorData['reviewsCount'] as num?)?.toInt() ?? 0;
+      final currentRating = (doctorData['rating'] as num?)?.toDouble() ?? 0;
+      final reviewsCount = currentCount + 1;
+      final totalRating = (currentRating * currentCount) + rating;
+      final averageRating =
+          double.parse((totalRating / reviewsCount).toStringAsFixed(1));
+
+      final reviewRef = doctorRef.collection('reviews').doc();
+      transaction.set(reviewRef, {
+        'userId': userId,
+        'userName': userName,
+        'userPhoto': userPhoto,
+        'rating': rating,
+        'comment': comment,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(doctorRef, {
+        'rating': averageRating,
+        'reviewsCount': reviewsCount,
+      });
+    });
+  }
+
+  @override
+  Stream<List<ReviewModel>> getDoctorReviews(String doctorId) {
+    final trimmedId = doctorId.trim();
+    if (trimmedId.isEmpty) {
+      return Stream<List<ReviewModel>>.value(const []);
+    }
+
+    return _firestore
+        .collection('doctors')
+        .doc(trimmedId)
+        .collection('reviews')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(ReviewModel.fromFirestore)
+              .toList(growable: false),
+        );
   }
 
   @override

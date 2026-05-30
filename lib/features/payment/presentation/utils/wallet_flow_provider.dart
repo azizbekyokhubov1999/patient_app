@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/datasources/wallet_remote_data_source.dart';
+import '../../data/repositories/wallet_repository_impl.dart';
 import '../manager/payment_cubit.dart';
 import '../manager/wallet_cubit.dart';
 import '../models/wallet_flow_args.dart';
@@ -37,7 +39,9 @@ Widget buildWalletFlowScope({
   return MultiBlocProvider(
     providers: [
       BlocProvider(
-        create: (_) => WalletCubit()..listenToWallet(),
+        create: (_) => WalletCubit(
+          repository: WalletRepositoryImpl(WalletRemoteDataSourceImpl()),
+        )..loadWalletDetails(),
       ),
       BlocProvider(
         create: (_) => PaymentCubit()..loadPaymentMethods(),

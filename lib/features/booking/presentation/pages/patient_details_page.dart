@@ -34,7 +34,7 @@ class PatientDetailsPage extends StatelessWidget {
         initialDate: args.selectedDate,
         initialSelectedTime: args.selectedTime,
         initialSelectedPackage: args.selectedPackage,
-      ),
+      )..add(const SelectPatientTypeEvent(isForSelf: true)),
       child: _PatientDetailsView(args: args),
     );
   }
@@ -54,10 +54,6 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
   final _nameController = TextEditingController();
   final _problemController = TextEditingController();
 
-  static const _profileName = 'Jennifer Aaker';
-  static const _profileGender = 'Female';
-  static const _profileAge = '24 Years';
-
   String? _gender;
   String? _age;
   bool _isForSelf = true;
@@ -68,7 +64,6 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
   @override
   void initState() {
     super.initState();
-    _applyForSelfDefaults();
   }
 
   @override
@@ -78,28 +73,38 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
     super.dispose();
   }
 
-  void _applyForSelfDefaults() {
-    _nameController.text = _profileName;
-    _gender = _profileGender;
-    _age = _profileAge;
+  void _applySelfAutofill(BookingState state) {
+    final name = state.selfAutofillName?.trim();
+    if (name != null && name.isNotEmpty) {
+      _nameController.text = name;
+    }
+
+    final gender = state.selfAutofillGender?.trim();
+    _gender = gender != null && gender.isNotEmpty ? gender : null;
   }
 
   void _toggleForSelf(bool value) {
     setState(() {
       _isForSelf = value;
-      if (value) {
-        _applyForSelfDefaults();
-      } else {
+      if (!value) {
         _nameController.clear();
         _gender = null;
         _age = null;
       }
     });
+    context.read<BookingBloc>().add(SelectPatientTypeEvent(isForSelf: value));
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BookingBloc, BookingState>(
+    return BlocListener<BookingBloc, BookingState>(
+      listenWhen: (previous, current) =>
+          current.selfAutofillGeneration != previous.selfAutofillGeneration,
+      listener: (context, state) {
+        if (!_isForSelf) return;
+        setState(() => _applySelfAutofill(state));
+      },
+      child: BlocBuilder<BookingBloc, BookingState>(
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.white,
@@ -176,6 +181,7 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
                   const SizedBox(height: AppSpacing.md),
                   const _FieldLabel('Gender'),
                   DropdownButtonFormField<String>(
+                    key: ValueKey('gender-$_gender'),
                     initialValue: _gender,
                     items: _genderOptions
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -188,6 +194,7 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
                   const SizedBox(height: AppSpacing.md),
                   const _FieldLabel('Your Age'),
                   DropdownButtonFormField<String>(
+                    key: ValueKey('age-$_age'),
                     initialValue: _age,
                     items: _ageOptions
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -263,6 +270,7 @@ class _PatientDetailsViewState extends State<_PatientDetailsView> {
           ),
         );
       },
+      ),
     );
   }
 }

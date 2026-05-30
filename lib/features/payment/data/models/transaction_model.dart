@@ -4,29 +4,44 @@ class TransactionModel {
   const TransactionModel({
     required this.id,
     required this.title,
-    required this.timestamp,
     required this.amount,
-    required this.type,
-    required this.postBalance,
+    required this.isCredit,
+    required this.date,
+    this.postBalance = 0,
   });
 
   final String id;
   final String title;
-  final DateTime timestamp;
   final double amount;
-  final String type;
+  final bool isCredit;
+  final DateTime date;
   final double postBalance;
 
-  bool get isIncome => type == 'income';
-  bool get isExpense => type == 'expense';
+  DateTime get timestamp => date;
 
-  factory TransactionModel.fromMap(Map<String, dynamic> map, String id) {
+  bool get isIncome => isCredit;
+
+  bool get isExpense => !isCredit;
+
+  String get type => isCredit ? 'income' : 'expense';
+
+  factory TransactionModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return TransactionModel._fromMap(data, doc.id);
+  }
+
+  factory TransactionModel.fromMap(Map<String, dynamic> map, String id) =>
+      TransactionModel._fromMap(map, id);
+
+  factory TransactionModel._fromMap(Map<String, dynamic> map, String id) {
+    final isCredit = map['isCredit'] as bool? ?? (map['type'] == 'income');
+
     return TransactionModel(
       id: id,
       title: map['title'] as String? ?? '',
-      timestamp: _parseTimestamp(map['timestamp']),
       amount: (map['amount'] as num?)?.toDouble() ?? 0,
-      type: map['type'] as String? ?? 'expense',
+      isCredit: isCredit,
+      date: _parseTimestamp(map['date'] ?? map['timestamp']),
       postBalance: (map['postBalance'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -34,27 +49,26 @@ class TransactionModel {
   Map<String, dynamic> toMap() {
     return {
       'title': title,
-      'timestamp': Timestamp.fromDate(timestamp),
       'amount': amount,
-      'type': type,
-      'postBalance': postBalance,
+      'isCredit': isCredit,
+      'date': Timestamp.fromDate(date),
     };
   }
 
   TransactionModel copyWith({
     String? id,
     String? title,
-    DateTime? timestamp,
     double? amount,
-    String? type,
+    bool? isCredit,
+    DateTime? date,
     double? postBalance,
   }) {
     return TransactionModel(
       id: id ?? this.id,
       title: title ?? this.title,
-      timestamp: timestamp ?? this.timestamp,
       amount: amount ?? this.amount,
-      type: type ?? this.type,
+      isCredit: isCredit ?? this.isCredit,
+      date: date ?? this.date,
       postBalance: postBalance ?? this.postBalance,
     );
   }

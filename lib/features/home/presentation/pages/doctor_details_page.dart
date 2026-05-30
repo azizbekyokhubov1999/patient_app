@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../booking/presentation/utils/booking_navigation.dart';
 import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/link_launcher.dart';
+import '../../data/models/review_model.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/doctor_review.dart';
 import '../../domain/entities/working_hours_entry.dart';
@@ -28,10 +31,13 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   bool _favoriteBusy = false;
   late Doctor _doctor;
   StreamSubscription<bool>? _favoriteSubscription;
+  StreamSubscription<Doctor?>? _doctorSubscription;
+  StreamSubscription<List<ReviewModel>>? _reviewsSubscription;
   final TextEditingController _reviewSearchController = TextEditingController();
   String _reviewQuery = '';
   final Set<String> _selectedFilters = {'Verified', 'Latest'};
-  late List<DoctorReview> _reviews;
+  List<ReviewModel> _reviews = const [];
+  String? _currentUserId;
 
   Doctor get _d => _doctor;
 
@@ -40,9 +46,11 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
     super.initState();
     _doctor = widget.doctor;
     _favorite = _doctor.isFavorite;
-    _reviews = List<DoctorReview>.from(_doctor.patientReviews);
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _refreshDoctorFromFirestore();
     _listenToFavoriteChanges();
+    _listenToDoctorUpdates();
+    _listenToReviews();
   }
 
   Future<void> _refreshDoctorFromFirestore() async {
@@ -56,9 +64,37 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
       setState(() {
         _doctor = fresh;
         _favorite = fresh.isFavorite;
-        _reviews = List<DoctorReview>.from(fresh.patientReviews);
       });
     } catch (_) {}
+  }
+
+  void _listenToDoctorUpdates() {
+    final id = _doctor.documentId;
+    if (id.isEmpty) return;
+
+    _doctorSubscription?.cancel();
+    _doctorSubscription = AppDependencies.instance.doctorsRepository
+        .watchDoctorById(id)
+        .listen((doctor) {
+      if (!mounted || doctor == null) return;
+      setState(() {
+        _doctor = doctor;
+        _favorite = doctor.isFavorite;
+      });
+    });
+  }
+
+  void _listenToReviews() {
+    final id = _doctor.documentId;
+    if (id.isEmpty) return;
+
+    _reviewsSubscription?.cancel();
+    _reviewsSubscription = AppDependencies.instance.doctorsRepository
+        .getDoctorReviews(id)
+        .listen((reviews) {
+      if (!mounted) return;
+      setState(() => _reviews = reviews);
+    });
   }
 
   void _listenToFavoriteChanges() {
@@ -99,20 +135,25 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   @override
   void dispose() {
     _favoriteSubscription?.cancel();
+    _doctorSubscription?.cancel();
+    _reviewsSubscription?.cancel();
     _reviewSearchController.dispose();
     super.dispose();
   }
 
+  List<DoctorReview> get _displayReviews {
+    return _reviews
+        .map((review) => _toDoctorReview(review, _currentUserId))
+        .toList(growable: false);
+  }
+
   List<DoctorReview> get _filteredReviews {
-    var list = List<DoctorReview>.from(_reviews);
+    var list = List<DoctorReview>.from(_displayReviews);
     if (_selectedFilters.contains('Verified')) {
       list = list.where((r) => r.verified).toList();
     }
     if (_selectedFilters.contains('Detailed Reviews')) {
       list = list.where((r) => r.text.length >= 80).toList();
-    }
-    if (_selectedFilters.contains('Latest')) {
-      list = list.reversed.toList();
     }
     if (_reviewQuery.trim().isNotEmpty) {
       final q = _reviewQuery.trim().toLowerCase();
@@ -512,17 +553,10 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       ),
                     ),
                     InkWell(
-                      onTap: () async {
-                        final review = await context.pushNamed<DoctorReview>(
-                          'leave-review-doctor',
-                          extra: _d,
-                        );
-                        if (review != null && mounted) {
-                          setState(() {
-                            _reviews = [review, ..._reviews];
-                          });
-                        }
-                      },
+                      onTap: () => context.pushNamed(
+                        'leave-review-doctor',
+                        extra: _d,
+                      ),
                       child: Text(
                         '+ add review',
                         style: textTheme.labelLarge?.copyWith(
@@ -608,12 +642,25 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                ..._filteredReviews.map(
-                  (r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _ReviewCard(review: r),
+                if (_filteredReviews.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'No reviews yet',
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ..._filteredReviews.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _ReviewCard(review: r),
+                    ),
                   ),
-                ),
               ]),
             ),
           ),
@@ -901,7 +948,19 @@ class _ReviewCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundImage: NetworkImage(review.avatarUrl),
+                backgroundColor: AppColors.neutral200,
+                backgroundImage: review.avatarUrl.trim().isNotEmpty
+                    ? NetworkImage(review.avatarUrl)
+                    : null,
+                child: review.avatarUrl.trim().isEmpty
+                    ? Text(
+                        _initialsFromName(review.authorName),
+                        style: textTheme.labelLarge?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1036,4 +1095,41 @@ class _MapPinMarker extends StatelessWidget {
       child: const Icon(LucideIcons.mapPin, color: AppColors.white, size: 22),
     );
   }
+}
+
+DoctorReview _toDoctorReview(ReviewModel review, String? currentUserId) {
+  final isCurrentUser =
+      currentUserId != null && review.userId == currentUserId;
+
+  return DoctorReview(
+    authorName: isCurrentUser ? 'You' : review.userName,
+    avatarUrl: review.userPhoto,
+    verified: isCurrentUser,
+    timeAgo: _formatReviewDate(review.createdAt),
+    text: review.comment,
+    rating: review.rating,
+  );
+}
+
+String _formatReviewDate(DateTime date) {
+  final now = DateTime.now();
+  final difference = now.difference(date);
+
+  if (difference.inMinutes < 1) return 'just now';
+  if (difference.inHours < 24) {
+    if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    }
+    return '${difference.inHours}h ago';
+  }
+  if (difference.inDays < 7) return '${difference.inDays}d ago';
+  return DateFormat('MMM d, yyyy').format(date);
+}
+
+String _initialsFromName(String name) {
+  final parts =
+      name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first[0].toUpperCase();
+  return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
 }

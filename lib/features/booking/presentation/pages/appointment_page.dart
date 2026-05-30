@@ -57,14 +57,18 @@ class AppointmentPage extends StatelessWidget {
         (hospital?.specialists.isNotEmpty == true ? hospital!.specialists.first : _mockDoctor);
     final resolvedDoctorId = doctorId ?? _doctorIdFromDoctor(initialDoctor);
 
+    final today = DateTime.now();
+    final initialDate = DateTime(today.year, today.month, today.day);
+
     return BlocProvider(
       create: (_) {
         final bloc = BookingBloc(
           repository: BookingRepositoryImpl(BookingRemoteDataSourceImpl()),
           doctorId: resolvedDoctorId,
-          initialDate: DateTime(2026, 1, 15),
+          doctor: initialDoctor,
+          initialDate: initialDate,
         );
-        bloc.add(StartBookingEvent(doctorId: resolvedDoctorId, date: DateTime(2026, 1, 15)));
+        bloc.add(StartBookingEvent(doctorId: resolvedDoctorId, date: initialDate));
         return bloc;
       },
       child: _AppointmentView(
@@ -77,6 +81,9 @@ class AppointmentPage extends StatelessWidget {
   }
 
   static String _doctorIdFromDoctor(Doctor doctor) {
+    if (doctor.documentId.isNotEmpty) return doctor.documentId;
+    final id = doctor.id?.trim();
+    if (id != null && id.isNotEmpty) return id;
     return doctor.name.toLowerCase().replaceAll(' ', '_');
   }
 }
@@ -99,12 +106,14 @@ class _AppointmentView extends StatefulWidget {
 }
 
 class _AppointmentViewState extends State<_AppointmentView> {
-  DateTime _displayMonth = DateTime(2026, 1);
+  late DateTime _displayMonth;
   Doctor? _activeSpecialist;
 
   @override
   void initState() {
     super.initState();
+    final today = DateTime.now();
+    _displayMonth = DateTime(today.year, today.month);
     _activeSpecialist = widget.selectedSpecialist ??
         (widget.hospital?.specialists.isNotEmpty == true ? widget.hospital!.specialists.first : null);
   }
@@ -114,7 +123,14 @@ class _AppointmentViewState extends State<_AppointmentView> {
     return BlocBuilder<BookingBloc, BookingState>(
       builder: (context, state) {
         final selectedDate = state.selectedDate;
-        final slots = state is SlotsLoaded ? state.slots : <TimeSlot>[];
+        final slotsLoaded = state is SlotsLoaded ? state : null;
+        final slots = slotsLoaded?.slots ?? const <TimeSlot>[];
+        final isLoadingSlots = state is BookingLoading;
+        final isPastDate = slotsLoaded?.isPastDate ?? false;
+        final isDoctorUnavailable =
+            slotsLoaded != null && !slotsLoaded.isDoctorAvailable && !isPastDate;
+        final today = DateTime.now();
+        final earliestSelectableDate = DateTime(today.year, today.month, today.day);
 
         return Scaffold(
           backgroundColor: AppColors.white,
@@ -167,6 +183,7 @@ class _AppointmentViewState extends State<_AppointmentView> {
                 _CustomCalendarGrid(
                   month: _displayMonth,
                   selectedDate: selectedDate,
+                  earliestSelectableDate: earliestSelectableDate,
                   onSelect: (date) {
                     context.read<BookingBloc>().add(SelectDate(date));
                   },
@@ -198,14 +215,52 @@ class _AppointmentViewState extends State<_AppointmentView> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                _TimeSlotGrid(
-                  slots: slots,
-                  selectedTime: state.selectedTime,
-                  onTapSlot: (slot) {
-                    if (slot.status == TimeSlotStatus.reserved) return;
-                    context.read<BookingBloc>().add(SelectTimeSlot(slot.time));
-                  },
-                ),
+                if (isLoadingSlots)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (isPastDate)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text(
+                        'Please select a future date',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (isDoctorUnavailable)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text(
+                        'Doctor is not available on this day',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.secondaryText,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  _TimeSlotGrid(
+                    slots: slots,
+                    selectedTime: state.selectedTime,
+                    onTapSlot: (slot) {
+                      if (slot.status == TimeSlotStatus.reserved || !slot.isAvailable) {
+                        return;
+                      }
+                      context.read<BookingBloc>().add(SelectTimeSlot(slot.time));
+                    },
+                  ),
               ],
             ),
           ),
@@ -504,11 +559,13 @@ class _CustomCalendarGrid extends StatelessWidget {
   const _CustomCalendarGrid({
     required this.month,
     required this.selectedDate,
+    required this.earliestSelectableDate,
     required this.onSelect,
   });
 
   final DateTime month;
   final DateTime selectedDate;
+  final DateTime earliestSelectableDate;
   final ValueChanged<DateTime> onSelect;
 
   static const List<String> _weekDays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -560,9 +617,12 @@ class _CustomCalendarGrid extends StatelessWidget {
           itemBuilder: (context, index) {
             final day = days[index];
             final isSelected = _isSameDate(day.date, selectedDate);
+            final dayOnly = DateTime(day.date.year, day.date.month, day.date.day);
+            final isPastDate = dayOnly.isBefore(earliestSelectableDate);
+            final isSelectable = day.isCurrentMonth && !isPastDate;
             return InkWell(
               borderRadius: BorderRadius.circular(26),
-              onTap: day.isCurrentMonth ? () => onSelect(day.date) : null,
+              onTap: isSelectable ? () => onSelect(dayOnly) : null,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary : AppColors.neutral100,
@@ -576,9 +636,11 @@ class _CustomCalendarGrid extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       color: isSelected
                           ? AppColors.white
-                          : (day.isCurrentMonth
-                              ? AppColors.primaryText
-                              : AppColors.secondaryText.withValues(alpha: 0.5)),
+                          : (!day.isCurrentMonth
+                              ? AppColors.secondaryText.withValues(alpha: 0.5)
+                              : (isPastDate
+                                  ? AppColors.secondaryText.withValues(alpha: 0.35)
+                                  : AppColors.primaryText)),
                     ),
                   ),
                 ),
@@ -654,7 +716,8 @@ class _TimeSlotGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final slot = slots[index];
         final isSelected = selectedTime == slot.time || slot.status == TimeSlotStatus.selected;
-        final isReserved = slot.status == TimeSlotStatus.reserved;
+        final isReserved =
+            slot.status == TimeSlotStatus.reserved || !slot.isAvailable;
 
         final bgColor = isSelected
             ? AppColors.primary

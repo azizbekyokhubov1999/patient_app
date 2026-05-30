@@ -14,6 +14,9 @@ abstract class BookingState {
     required this.walletBalance,
     required this.savedCards,
     required this.selectedCardId,
+    this.selfAutofillName,
+    this.selfAutofillGender,
+    this.selfAutofillGeneration = 0,
   });
 
   final DateTime selectedDate;
@@ -24,6 +27,11 @@ abstract class BookingState {
   final double walletBalance;
   final List<CardModel> savedCards;
   final String? selectedCardId;
+
+  /// Populated when "For Myself" is selected and Firestore profile is loaded.
+  final String? selfAutofillName;
+  final String? selfAutofillGender;
+  final int selfAutofillGeneration;
 }
 
 class BookingInitial extends BookingState {
@@ -36,6 +44,9 @@ class BookingInitial extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 }
 
@@ -49,6 +60,9 @@ class BookingLoading extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 }
 
@@ -63,9 +77,16 @@ class SlotsLoaded extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
+    this.isDoctorAvailable = true,
+    this.isPastDate = false,
   });
 
   final List<TimeSlot> slots;
+  final bool isDoctorAvailable;
+  final bool isPastDate;
 }
 
 class BookingError extends BookingState {
@@ -79,6 +100,9 @@ class BookingError extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 
   final String message;
@@ -94,6 +118,9 @@ class CardAddingLoading extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 }
 
@@ -108,6 +135,9 @@ class CardAddingSuccess extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 
   final CardModel newCard;
@@ -124,6 +154,9 @@ class CardAddingFailure extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 
   final String message;
@@ -139,6 +172,9 @@ class BookingConfirming extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 }
 
@@ -152,6 +188,9 @@ class BookingConfirmed extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 }
 
@@ -166,6 +205,9 @@ class BookingConfirmFailure extends BookingState {
     required super.walletBalance,
     super.savedCards = const [],
     super.selectedCardId,
+    super.selfAutofillName,
+    super.selfAutofillGender,
+    super.selfAutofillGeneration,
   });
 
   final String message;

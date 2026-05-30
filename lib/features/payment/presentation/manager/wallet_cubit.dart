@@ -1,36 +1,39 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/mock_data.dart';
+import '../../data/datasources/wallet_remote_data_source.dart';
 import '../../data/models/transaction_model.dart';
+import '../../data/repositories/wallet_repository_impl.dart';
+import '../../domain/repositories/wallet_repository.dart';
 import 'wallet_state.dart';
 
 class WalletCubit extends Cubit<WalletState> {
   WalletCubit({
     FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
+    WalletRepository? repository,
   })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
+        _repository = repository ??
+            WalletRepositoryImpl(WalletRemoteDataSourceImpl()),
         super(const WalletInitial());
 
   final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
+  final WalletRepository _repository;
 
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _walletSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _transactionsSub;
+  StreamSubscription<double>? _balanceSub;
+  StreamSubscription<List<TransactionModel>>? _transactionsSub;
 
   double _balance = 0;
   String _walletId = '';
   List<TransactionModel> _transactions = const [];
 
-  void listenToWallet() {
+  void loadWalletDetails() {
     emit(const WalletLoading());
 
-    unawaited(_walletSub?.cancel());
+    unawaited(_balanceSub?.cancel());
     unawaited(_transactionsSub?.cancel());
 
     if (kUseProfileMockData) {
@@ -46,33 +49,82 @@ class WalletCubit extends Cubit<WalletState> {
       return;
     }
 
-    _walletSub = _firestore.collection('users').doc(uid).snapshots().listen(
-      (snapshot) {
-        final data = snapshot.data() ?? {};
-        _balance = (data['balance'] as num?)?.toDouble() ??
-            (data['wallet_balance'] as num?)?.toDouble() ??
-            0;
-        _walletId = data['walletId'] as String? ?? '';
+    _walletId = uid.substring(0, 8).toUpperCase();
+
+    _balanceSub = _repository.getWalletBalance(uid).listen(
+      (balance) {
+        _balance = balance;
         _tryEmitLoaded();
       },
       onError: _onStreamError,
     );
 
-    _transactionsSub = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        _transactions = snapshot.docs
-            .map((doc) => TransactionModel.fromMap(doc.data(), doc.id))
-            .toList();
+    _transactionsSub = _repository.getWalletTransactions(uid).listen(
+      (transactions) {
+        _transactions = transactions;
         _tryEmitLoaded();
       },
       onError: _onStreamError,
     );
+  }
+
+  void listenToWallet() => loadWalletDetails();
+
+  Future<void> addMoney(double amount) async {
+    if (amount <= 0) {
+      _emitTopUpFailure('Please enter a valid amount');
+      return;
+    }
+
+    final current = state;
+    if (current is! WalletLoaded) {
+      emit(const WalletError('Please enter a valid amount'));
+      return;
+    }
+
+    emit(current.copyWith(topUpStatus: TopUpStatus.loading, topUpErrorMessage: null));
+
+    try {
+      if (kUseProfileMockData) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        final now = DateTime.now();
+        final tx = TransactionModel(
+          id: 'tx-${now.millisecondsSinceEpoch}',
+          title: 'Money Added to Wallet',
+          amount: amount,
+          isCredit: true,
+          date: now,
+          postBalance: current.balance + amount,
+        );
+        _balance = current.balance + amount;
+        _transactions = [tx, ...current.transactions];
+        emit(
+          WalletLoaded(
+            balance: _balance,
+            walletId: current.walletId,
+            transactions: List.unmodifiable(_transactions),
+            topUpStatus: TopUpStatus.success,
+          ),
+        );
+        return;
+      }
+
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) {
+        _emitTopUpFailure('Failed to add money. Please try again.');
+        return;
+      }
+
+      await _repository.addMoneyToWallet(uid, amount);
+
+      final loaded = state;
+      if (loaded is WalletLoaded) {
+        emit(loaded.copyWith(topUpStatus: TopUpStatus.success));
+      }
+    } catch (e, st) {
+      developer.log('addMoney error', error: e, stackTrace: st);
+      _emitTopUpFailure('Failed to add money. Please try again.');
+    }
   }
 
   Future<void> executeTopUp({
@@ -84,26 +136,23 @@ class WalletCubit extends Cubit<WalletState> {
 
     emit(current.copyWith(topUpStatus: TopUpStatus.loading, topUpErrorMessage: null));
 
-    final newBalance = current.balance + amount;
-    final now = DateTime.now();
-    final transaction = TransactionModel(
-      id: '',
-      title: 'Money Added to Wallet',
-      timestamp: now,
-      amount: amount,
-      type: 'income',
-      postBalance: newBalance,
-    );
-
     try {
       if (kUseProfileMockData) {
         await Future<void>.delayed(const Duration(milliseconds: 700));
-        final tx = transaction.copyWith(id: 'tx-${now.millisecondsSinceEpoch}');
-        _balance = newBalance;
+        final now = DateTime.now();
+        final tx = TransactionModel(
+          id: 'tx-${now.millisecondsSinceEpoch}',
+          title: 'Money Added to Wallet',
+          amount: amount,
+          isCredit: true,
+          date: now,
+          postBalance: current.balance + amount,
+        );
+        _balance = current.balance + amount;
         _transactions = [tx, ...current.transactions];
         emit(
           WalletLoaded(
-            balance: newBalance,
+            balance: _balance,
             walletId: current.walletId,
             transactions: List.unmodifiable(_transactions),
             topUpStatus: TopUpStatus.success,
@@ -123,35 +172,12 @@ class WalletCubit extends Cubit<WalletState> {
         return;
       }
 
-      final batch = _firestore.batch();
-      final userRef = _firestore.collection('users').doc(uid);
-      final walletRef = userRef.collection('wallet').doc('wallet');
-      final txRef = userRef.collection('transactions').doc();
-
-      batch.set(
-        walletRef,
-        {
-          'wallet_balance': newBalance,
-          'balance': newBalance,
-          'walletId': current.walletId,
-        },
-        SetOptions(merge: true),
-      );
-      batch.set(userRef, {'balance': newBalance}, SetOptions(merge: true));
-      batch.set(txRef, transaction.toMap());
-
-      await batch.commit();
-
-      final savedTx = transaction.copyWith(id: txRef.id);
-      _balance = newBalance;
-      _transactions = [savedTx, ...current.transactions];
+      await _repository.addMoneyToWallet(uid, amount);
 
       emit(
-        WalletLoaded(
-          balance: newBalance,
-          walletId: current.walletId,
-          transactions: List.unmodifiable(_transactions),
+        current.copyWith(
           topUpStatus: TopUpStatus.success,
+          topUpErrorMessage: null,
         ),
       );
     } catch (e, st) {
@@ -170,6 +196,20 @@ class WalletCubit extends Cubit<WalletState> {
     if (current is WalletLoaded) {
       emit(current.copyWith(topUpStatus: TopUpStatus.idle, topUpErrorMessage: null));
     }
+  }
+
+  void _emitTopUpFailure(String message) {
+    final current = state;
+    if (current is WalletLoaded) {
+      emit(
+        current.copyWith(
+          topUpStatus: TopUpStatus.failure,
+          topUpErrorMessage: message,
+        ),
+      );
+      return;
+    }
+    emit(WalletError(message));
   }
 
   void _tryEmitLoaded() {
@@ -211,7 +251,7 @@ class WalletCubit extends Cubit<WalletState> {
 
   @override
   Future<void> close() {
-    unawaited(_walletSub?.cancel());
+    unawaited(_balanceSub?.cancel());
     unawaited(_transactionsSub?.cancel());
     return super.close();
   }

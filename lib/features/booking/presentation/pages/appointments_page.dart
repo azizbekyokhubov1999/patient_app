@@ -148,7 +148,7 @@ class _UpcomingTab extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
-          'Cancel appointment?',
+          'Cancel Appointment',
           style: AppTextStyles.titleMedium,
         ),
         content: const Text(
@@ -165,16 +165,25 @@ class _UpcomingTab extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
             ),
-            child: const Text('Yes, cancel'),
+            child: const Text('Yes, Cancel'),
           ),
         ],
       ),
     );
 
-    if (approved == true && context.mounted) {
-      await context.push(
-        AppPaths.cancelBooking,
-        extra: appointment.documentId,
+    if (approved != true || !context.mounted) return;
+
+    final success = await context
+        .read<UpcomingAppointmentsCubit>()
+        .cancelAppointment(appointment.documentId);
+
+    if (!context.mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Appointment cancelled successfully'),
+        ),
       );
     }
   }

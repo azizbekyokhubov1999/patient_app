@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/datasources/booking_remote_data_source.dart';
+import '../../data/repositories/booking_repository_impl.dart';
 import '../../domain/entities/appointment_model.dart';
+import '../../domain/repositories/booking_repository.dart';
 import 'cancelled_appointments_state.dart';
 
-/// Demo data while Firestore has no cancelled rows.
-const bool _kPresentationMockCancelled = true;
+/// Demo data reference (disabled — live Firestore is used).
+const bool _kPresentationMockCancelled = false;
 
 List<AppointmentModel> _presentationCancelledMocks() {
   return [
@@ -45,16 +47,20 @@ List<AppointmentModel> _presentationCancelledMocks() {
 
 class CancelledAppointmentsCubit extends Cubit<CancelledAppointmentsState> {
   CancelledAppointmentsCubit({
-    FirebaseFirestore? firestore,
+    BookingRepository? repository,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _repository = repository ??
+            BookingRepositoryImpl(
+              BookingRemoteDataSourceImpl(),
+              auth: auth,
+            ),
         _auth = auth ?? FirebaseAuth.instance,
         super(const CancelledAppointmentsInitial());
 
-  final FirebaseFirestore _firestore;
+  final BookingRepository _repository;
   final FirebaseAuth _auth;
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  StreamSubscription<List<AppointmentModel>>? _subscription;
 
   void fetchCancelledAppointments() {
     emit(const CancelledAppointmentsLoading());
@@ -65,25 +71,13 @@ class CancelledAppointmentsCubit extends Cubit<CancelledAppointmentsState> {
       return;
     }
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
+    if (_auth.currentUser == null) {
       emit(const CancelledAppointmentsLoaded([]));
       return;
     }
 
-    _subscription = _firestore
-        .collection('appointments')
-        .where('patientId', isEqualTo: uid)
-        .where('status', isEqualTo: 'cancelled')
-        .snapshots()
-        .listen(
-      (snapshot) {
-        final items = snapshot.docs
-            .map(AppointmentModel.fromFirestore)
-            .toList()
-          ..sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
-        emit(CancelledAppointmentsLoaded(items));
-      },
+    _subscription = _repository.getCancelledAppointments().listen(
+      (appointments) => emit(CancelledAppointmentsLoaded(appointments)),
       onError: (Object e, StackTrace st) {
         emit(CancelledAppointmentsError(e.toString()));
       },

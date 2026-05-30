@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/datasources/booking_remote_data_source.dart';
+import '../../data/repositories/booking_repository_impl.dart';
 import '../../domain/entities/appointment_model.dart';
+import '../../domain/repositories/booking_repository.dart';
 import 'completed_appointments_state.dart';
 
-/// Demo data while Firestore has no completed rows.
-const bool _kPresentationMockCompleted = true;
+/// Demo data reference (disabled — live Firestore is used).
+const bool _kPresentationMockCompleted = false;
 
 List<AppointmentModel> _presentationCompletedMocks() {
   return [
@@ -45,16 +47,20 @@ List<AppointmentModel> _presentationCompletedMocks() {
 
 class CompletedAppointmentsCubit extends Cubit<CompletedAppointmentsState> {
   CompletedAppointmentsCubit({
-    FirebaseFirestore? firestore,
+    BookingRepository? repository,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _repository = repository ??
+            BookingRepositoryImpl(
+              BookingRemoteDataSourceImpl(),
+              auth: auth,
+            ),
         _auth = auth ?? FirebaseAuth.instance,
         super(const CompletedAppointmentsInitial());
 
-  final FirebaseFirestore _firestore;
+  final BookingRepository _repository;
   final FirebaseAuth _auth;
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  StreamSubscription<List<AppointmentModel>>? _subscription;
 
   void addCompleted(AppointmentModel appointment) {
     final current = state;
@@ -81,25 +87,13 @@ class CompletedAppointmentsCubit extends Cubit<CompletedAppointmentsState> {
       return;
     }
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
+    if (_auth.currentUser == null) {
       emit(const CompletedAppointmentsLoaded([]));
       return;
     }
 
-    _subscription = _firestore
-        .collection('appointments')
-        .where('patientId', isEqualTo: uid)
-        .where('status', isEqualTo: 'completed')
-        .snapshots()
-        .listen(
-      (snapshot) {
-        final items = snapshot.docs
-            .map(AppointmentModel.fromFirestore)
-            .toList()
-          ..sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
-        emit(CompletedAppointmentsLoaded(items));
-      },
+    _subscription = _repository.getCompletedAppointments().listen(
+      (appointments) => emit(CompletedAppointmentsLoaded(appointments)),
       onError: (Object e, StackTrace st) {
         emit(CompletedAppointmentsError(e.toString()));
       },

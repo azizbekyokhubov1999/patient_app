@@ -9,6 +9,7 @@ class UserProfile {
     this.countryCode = '+1',
     this.dateOfBirth = '',
     this.gender = 'Female',
+    this.isProfileComplete = false,
   });
 
   final String uid;
@@ -19,4 +20,5 @@ class UserProfile {
   final String countryCode;
   final String dateOfBirth;
   final String gender;
+  final bool isProfileComplete;
 }

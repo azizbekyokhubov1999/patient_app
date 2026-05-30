@@ -43,6 +43,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       countryCode: model.countryCode,
       dateOfBirth: model.dateOfBirth,
       gender: model.gender,
+      isProfileComplete: model.isProfileComplete,
     );
   }
 
@@ -56,6 +57,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       countryCode: profile.countryCode,
       dateOfBirth: profile.dateOfBirth,
       gender: profile.gender,
+      isProfileComplete: profile.isProfileComplete,
     );
   }
 }

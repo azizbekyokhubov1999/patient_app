@@ -10,6 +10,7 @@ class UserModel {
     this.countryCode = '+1',
     this.dateOfBirth = '',
     this.gender = 'Female',
+    this.isProfileComplete = false,
   });
 
   final String uid;
@@ -20,6 +21,7 @@ class UserModel {
   final String countryCode;
   final String dateOfBirth;
   final String gender;
+  final bool isProfileComplete;
 
   factory UserModel.fromMap(Map<String, dynamic> map, {required String uid}) {
     return UserModel(
@@ -35,6 +37,7 @@ class UserModel {
       countryCode: map['countryCode'] as String? ?? '+1',
       dateOfBirth: map['dateOfBirth'] as String? ?? '',
       gender: map['gender'] as String? ?? 'Female',
+      isProfileComplete: map['isProfileComplete'] as bool? ?? false,
     );
   }
 
@@ -54,6 +57,7 @@ class UserModel {
       'countryCode': countryCode,
       'dateOfBirth': dateOfBirth,
       'gender': gender,
+      'isProfileComplete': isProfileComplete,
     };
   }
 
@@ -66,6 +70,7 @@ class UserModel {
     String? countryCode,
     String? dateOfBirth,
     String? gender,
+    bool? isProfileComplete,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -76,6 +81,7 @@ class UserModel {
       countryCode: countryCode ?? this.countryCode,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
+      isProfileComplete: isProfileComplete ?? this.isProfileComplete,
     );
   }
 }

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/doctor.dart';
-import '../../domain/entities/doctor_review.dart';
 import '../manager/leave_review_doctor_cubit.dart';
 import '../manager/leave_review_doctor_state.dart';
 
@@ -17,7 +17,11 @@ class LeaveReviewDoctorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LeaveReviewDoctorCubit(doctor),
+      create: (_) => LeaveReviewDoctorCubit(
+        doctor: doctor,
+        doctorsRepository: AppDependencies.instance.doctorsRepository,
+        profileRepository: AppDependencies.instance.profileRepository,
+      ),
       child: _LeaveReviewDoctorView(doctor: doctor),
     );
   }
@@ -32,7 +36,27 @@ class _LeaveReviewDoctorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final firstName = doctor.name.split(' ').where((e) => e.isNotEmpty).first;
 
-    return BlocBuilder<LeaveReviewDoctorCubit, LeaveReviewDoctorState>(
+    return BlocConsumer<LeaveReviewDoctorCubit, LeaveReviewDoctorState>(
+      listenWhen: (previous, current) =>
+          previous.submitSuccess != current.submitSuccess ||
+          previous.submitError != current.submitError,
+      listener: (context, state) {
+        if (state.submitSuccess) {
+          context.read<LeaveReviewDoctorCubit>().clearSubmitStatus();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Review submitted successfully')),
+          );
+          context.pop();
+          return;
+        }
+
+        if (state.submitError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.submitError!)),
+          );
+          context.read<LeaveReviewDoctorCubit>().clearSubmitStatus();
+        }
+      },
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.white,
@@ -185,12 +209,9 @@ class _LeaveReviewDoctorView extends StatelessWidget {
             child: SizedBox(
               height: 58,
               child: ElevatedButton(
-                onPressed: () {
-                  final review = context
-                      .read<LeaveReviewDoctorCubit>()
-                      .submitReview();
-                  context.pop<DoctorReview>(review);
-                },
+                onPressed: state.isSubmitting
+                    ? null
+                    : () => context.read<LeaveReviewDoctorCubit>().submitReview(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
@@ -198,10 +219,22 @@ class _LeaveReviewDoctorView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                child: const Text(
-                  'Submit',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-                ),
+                child: state.isSubmitting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Submit',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
               ),
             ),
           ),

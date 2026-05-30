@@ -38,6 +38,12 @@ class UpdatePatientDetailsEvent extends BookingEvent {
   final PatientInfo info;
 }
 
+class SelectPatientTypeEvent extends BookingEvent {
+  const SelectPatientTypeEvent({required this.isForSelf});
+
+  final bool isForSelf;
+}
+
 class SelectPaymentMethodEvent extends BookingEvent {
   const SelectPaymentMethodEvent(this.method);
 
@@ -68,4 +74,10 @@ class StartBookingEvent extends BookingEvent {
 
   final String doctorId;
   final DateTime date;
+}
+
+class WalletBalanceUpdatedEvent extends BookingEvent {
+  const WalletBalanceUpdatedEvent(this.balance);
+
+  final double balance;
 }

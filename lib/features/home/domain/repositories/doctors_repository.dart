@@ -1,8 +1,11 @@
 import '../entities/doctor.dart';
 import '../entities/hospital.dart';
+import '../../data/models/review_model.dart';
 
 abstract class DoctorsRepository {
   Future<Doctor?> getDoctorById(String doctorId);
+
+  Stream<Doctor?> watchDoctorById(String doctorId);
 
   Future<List<Doctor>> getTopDoctors({String? specialty, int limit = 30});
 
@@ -21,6 +24,17 @@ abstract class DoctorsRepository {
     required String doctorId,
     required bool isFavorite,
   });
+
+  Future<void> submitReview({
+    required String doctorId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  });
+
+  Stream<List<ReviewModel>> getDoctorReviews(String doctorId);
 
   Future<void> toggleHospitalFavorite({
     required String hospitalId,

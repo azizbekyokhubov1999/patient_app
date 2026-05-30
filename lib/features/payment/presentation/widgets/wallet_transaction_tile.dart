@@ -14,7 +14,7 @@ class WalletTransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeLabel = DateFormat('dd MMMM | hh:mm a').format(transaction.timestamp);
+    final timeLabel = DateFormat('MMM d, yyyy').format(transaction.date);
     final amountPrefix = transaction.isIncome ? '+ ' : '- ';
     final amountColor = transaction.isIncome ? _incomeGreen : _expenseRed;
     final amountText =
@@ -66,14 +66,16 @@ class WalletTransactionTile extends StatelessWidget {
                   color: amountColor,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Balance \$${transaction.postBalance.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.secondaryText,
+              if (transaction.postBalance > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Balance \$${transaction.postBalance.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.secondaryText,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],

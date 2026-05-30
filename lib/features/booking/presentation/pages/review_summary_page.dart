@@ -83,11 +83,14 @@ class ReviewSummaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final doctorId = args.doctorId ?? args.doctor?.name.toLowerCase().replaceAll(' ', '_') ?? 'doctor';
+    final doctor = args.doctor;
+    final doctorId =
+        args.doctorId ?? doctor?.documentId ?? doctor?.id?.trim() ?? '';
     return BlocProvider(
       create: (_) => BookingBloc(
         repository: BookingRepositoryImpl(BookingRemoteDataSourceImpl()),
-        doctorId: doctorId,
+        doctorId: doctorId.isNotEmpty ? doctorId : 'doctor',
+        doctor: doctor,
         initialDate: args.selectedDate,
         initialSelectedTime: args.selectedTime,
         initialSelectedPackage: args.selectedPackage,

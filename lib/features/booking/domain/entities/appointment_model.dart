@@ -13,16 +13,22 @@ class AppointmentModel {
     required this.startTime,
     required this.endTime,
     required this.status,
+    this.patientId,
     this.doctorImageUrl,
     this.doctorId,
     this.remindEnabled = true,
     this.patientName,
     this.patientPhone,
+    this.patientGender,
+    this.patientAge,
+    this.paymentMethod,
     this.packageType = 'Messaging',
     this.packageDuration = '30 minutes',
     this.subTotal = 20,
     this.discount = 0,
     this.totalAmount = 20,
+    this.createdAt,
+    this.cancelledAt,
     String? type,
     this.sessionStatus = 'pending',
     this.hospitalAddress = '',
@@ -32,25 +38,52 @@ class AppointmentModel {
   /// Firestore document id (used for updates).
   final String documentId;
 
+  /// Alias for [documentId] matching Firestore document id.
+  String get id => documentId;
+
   /// Display / business id (e.g. DC854568).
   final String appointmentId;
+  final String? patientId;
   final String? doctorId;
   final String doctorName;
   final String doctorSpecialty;
   final double doctorRating;
   final String? doctorImageUrl;
+
+  /// Alias for [doctorImageUrl] matching Firestore `doctorImage` field.
+  String? get doctorImage => doctorImageUrl;
+
   final DateTime appointmentDate;
+
+  /// Alias for [appointmentDate] matching Firestore `date` field.
+  DateTime get date => appointmentDate;
+
   final String startTime;
+
+  /// Alias for [startTime] matching Firestore `time` field.
+  String get time => startTime;
+
   final String endTime;
   final String status;
   final bool remindEnabled;
   final String? patientName;
   final String? patientPhone;
+  final String? patientGender;
+  final String? patientAge;
+  final String? paymentMethod;
   final String packageType;
   final String packageDuration;
+
+  /// Matches Firestore `packagePrice`; kept as [subTotal] for existing UI.
   final double subTotal;
+
+  /// Alias for [subTotal] matching Firestore `packagePrice` field.
+  double get packagePrice => subTotal;
+
   final double discount;
   final double totalAmount;
+  final DateTime? createdAt;
+  final DateTime? cancelledAt;
 
   /// `video`, `voice`, `messaging`, or `offline`.
   final String type;
@@ -83,8 +116,10 @@ class AppointmentModel {
   bool get isSessionCompleted => sessionStatus == 'completed';
 
   String get displayAppointmentId {
-    final raw = appointmentId.replaceAll('#', '').toUpperCase();
-    return raw.startsWith('DC') ? '#$raw' : '#DC$raw';
+    final raw = appointmentId.replaceAll('#', '').trim();
+    if (raw.isEmpty) return '#--------';
+    final slice = raw.length >= 8 ? raw.substring(0, 8) : raw;
+    return '#${slice.toUpperCase()}';
   }
 
   String get bookingDateTimeLabel {
@@ -137,6 +172,7 @@ class AppointmentModel {
   AppointmentModel copyWith({
     String? documentId,
     String? appointmentId,
+    String? patientId,
     String? doctorId,
     String? doctorName,
     String? doctorSpecialty,
@@ -149,11 +185,16 @@ class AppointmentModel {
     bool? remindEnabled,
     String? patientName,
     String? patientPhone,
+    String? patientGender,
+    String? patientAge,
+    String? paymentMethod,
     String? packageType,
     String? packageDuration,
     double? subTotal,
     double? discount,
     double? totalAmount,
+    DateTime? createdAt,
+    DateTime? cancelledAt,
     String? type,
     String? sessionStatus,
     String? hospitalAddress,
@@ -162,6 +203,7 @@ class AppointmentModel {
     return AppointmentModel(
       documentId: documentId ?? this.documentId,
       appointmentId: appointmentId ?? this.appointmentId,
+      patientId: patientId ?? this.patientId,
       doctorId: doctorId ?? this.doctorId,
       doctorName: doctorName ?? this.doctorName,
       doctorSpecialty: doctorSpecialty ?? this.doctorSpecialty,
@@ -174,11 +216,16 @@ class AppointmentModel {
       remindEnabled: remindEnabled ?? this.remindEnabled,
       patientName: patientName ?? this.patientName,
       patientPhone: patientPhone ?? this.patientPhone,
+      patientGender: patientGender ?? this.patientGender,
+      patientAge: patientAge ?? this.patientAge,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       packageType: packageType ?? this.packageType,
       packageDuration: packageDuration ?? this.packageDuration,
       subTotal: subTotal ?? this.subTotal,
       discount: discount ?? this.discount,
       totalAmount: totalAmount ?? this.totalAmount,
+      createdAt: createdAt ?? this.createdAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
       type: type ?? this.type,
       sessionStatus: sessionStatus ?? this.sessionStatus,
       hospitalAddress: hospitalAddress ?? this.hospitalAddress,
@@ -189,9 +236,15 @@ class AppointmentModel {
   factory AppointmentModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final data = doc.data();
+    return AppointmentModel.fromFirestoreMap(doc.data(), doc.id);
+  }
+
+  factory AppointmentModel.fromFirestoreMap(
+    Map<String, dynamic>? data,
+    String docId,
+  ) {
     if (data == null) {
-      throw StateError('Appointment document ${doc.id} has no data');
+      throw StateError('Appointment document $docId has no data');
     }
 
     final dateRaw = data['date'] ?? data['appointmentDate'];
@@ -204,6 +257,22 @@ class AppointmentModel {
       appointmentDate = DateTime.now();
     }
 
+    DateTime? createdAt;
+    final createdRaw = data['createdAt'];
+    if (createdRaw is Timestamp) {
+      createdAt = createdRaw.toDate();
+    } else if (createdRaw is DateTime) {
+      createdAt = createdRaw;
+    }
+
+    DateTime? cancelledAt;
+    final cancelledRaw = data['cancelledAt'];
+    if (cancelledRaw is Timestamp) {
+      cancelledAt = cancelledRaw.toDate();
+    } else if (cancelledRaw is DateTime) {
+      cancelledAt = cancelledRaw;
+    }
+
     final ratingRaw = data['doctorRating'];
     var rating = 0.0;
     if (ratingRaw is num) {
@@ -211,27 +280,40 @@ class AppointmentModel {
     }
 
     final packageType = data['packageType'] as String? ?? 'Messaging';
+    final startTime =
+        data['time'] as String? ?? data['startTime'] as String? ?? '';
+    final endTime = data['endTime'] as String? ?? startTime;
+    final packagePrice = (data['packagePrice'] as num?)?.toDouble() ??
+        (data['subTotal'] as num?)?.toDouble() ??
+        20;
 
     return AppointmentModel(
-      documentId: doc.id,
-      appointmentId: data['appointmentId'] as String? ?? doc.id,
+      documentId: docId,
+      appointmentId: data['appointmentId'] as String? ?? docId,
+      patientId: data['patientId'] as String?,
       doctorId: data['doctorId'] as String?,
       doctorName: data['doctorName'] as String? ?? 'Doctor',
       doctorSpecialty: data['doctorSpecialty'] as String? ?? '',
       doctorRating: rating,
-      doctorImageUrl: data['doctorImageUrl'] as String?,
+      doctorImageUrl: data['doctorImage'] as String? ??
+          data['doctorImageUrl'] as String?,
       appointmentDate: appointmentDate,
-      startTime: data['startTime'] as String? ?? '',
-      endTime: data['endTime'] as String? ?? '',
-      status: data['status'] as String? ?? 'upcoming',
+      startTime: startTime,
+      endTime: endTime,
+      status: data['status'] as String? ?? 'confirmed',
       remindEnabled: data['remindEnabled'] as bool? ?? true,
       patientName: data['patientName'] as String?,
       patientPhone: data['patientPhone'] as String?,
+      patientGender: data['patientGender'] as String?,
+      patientAge: data['patientAge']?.toString(),
+      paymentMethod: data['paymentMethod'] as String?,
       packageType: packageType,
       packageDuration: data['packageDuration'] as String? ?? '30 minutes',
-      subTotal: (data['subTotal'] as num?)?.toDouble() ?? 20,
+      subTotal: packagePrice,
       discount: (data['discount'] as num?)?.toDouble() ?? 0,
-      totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? 20,
+      totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? packagePrice,
+      createdAt: createdAt,
+      cancelledAt: cancelledAt,
       type: data['type'] as String?,
       sessionStatus: data['sessionStatus'] as String? ?? 'pending',
       hospitalAddress: data['hospitalAddress'] as String? ?? '',

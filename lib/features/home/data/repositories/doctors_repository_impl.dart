@@ -2,6 +2,7 @@ import '../../domain/entities/doctor.dart';
 import '../../domain/entities/hospital.dart';
 import '../../domain/repositories/doctors_repository.dart';
 import '../datasources/doctor_remote_data_source.dart';
+import '../models/review_model.dart';
 
 class DoctorsRepositoryImpl implements DoctorsRepository {
   DoctorsRepositoryImpl(this._remote);
@@ -11,6 +12,11 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   @override
   Future<Doctor?> getDoctorById(String doctorId) {
     return _remote.getDoctorById(doctorId);
+  }
+
+  @override
+  Stream<Doctor?> watchDoctorById(String doctorId) {
+    return _remote.watchDoctorById(doctorId);
   }
 
   @override
@@ -56,6 +62,30 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
       doctorId: doctorId,
       isFavorite: isFavorite,
     );
+  }
+
+  @override
+  Future<void> submitReview({
+    required String doctorId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  }) {
+    return _remote.submitReview(
+      doctorId: doctorId,
+      userId: userId,
+      userName: userName,
+      userPhoto: userPhoto,
+      rating: rating,
+      comment: comment,
+    );
+  }
+
+  @override
+  Stream<List<ReviewModel>> getDoctorReviews(String doctorId) {
+    return _remote.getDoctorReviews(doctorId);
   }
 
   @override

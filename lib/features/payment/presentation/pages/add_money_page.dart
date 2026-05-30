@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
@@ -11,8 +10,6 @@ import '../manager/payment_cubit.dart';
 import '../manager/payment_state.dart';
 import '../manager/wallet_cubit.dart';
 import '../manager/wallet_state.dart';
-import '../models/wallet_flow_args.dart';
-import '../utils/wallet_flow_provider.dart';
 
 class AddMoneyPage extends StatefulWidget {
   const AddMoneyPage({super.key});
@@ -24,10 +21,13 @@ class AddMoneyPage extends StatefulWidget {
 class _AddMoneyPageState extends State<AddMoneyPage> {
   final _amountController = TextEditingController();
   String? _selectedPaymentSourceId;
+  double? _selectedAmount;
+  double? _lastSubmittedAmount;
 
   @override
   void initState() {
     super.initState();
+    _amountController.addListener(_onAmountTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final paymentState = context.read<PaymentCubit>().state;
@@ -44,8 +44,16 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
 
   @override
   void dispose() {
+    _amountController.removeListener(_onAmountTextChanged);
     _amountController.dispose();
     super.dispose();
+  }
+
+  void _onAmountTextChanged() {
+    final parsed = _parseAmount();
+    if (parsed != _selectedAmount) {
+      setState(() => _selectedAmount = parsed);
+    }
   }
 
   double? _parseAmount() {
@@ -56,12 +64,13 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
 
   void _selectQuickAmount(double value) {
     setState(() {
+      _selectedAmount = value;
       _amountController.text = value.toStringAsFixed(0);
     });
   }
 
   void _submit() {
-    final amount = _parseAmount();
+    final amount = _selectedAmount ?? _parseAmount();
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
@@ -75,10 +84,8 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
       return;
     }
 
-    context.read<WalletCubit>().executeTopUp(
-          amount: amount,
-          paymentSourceId: _selectedPaymentSourceId!,
-        );
+    _lastSubmittedAmount = amount;
+    context.read<WalletCubit>().addMoney(amount);
   }
 
   @override
@@ -94,16 +101,16 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
         if (state is! WalletLoaded) return;
 
         if (state.isTopUpSuccess) {
-          final amount = _parseAmount() ?? 0;
-          final walletFlow = readWalletFlowArgs(context);
+          final amount = _lastSubmittedAmount ?? _selectedAmount ?? _parseAmount() ?? 0;
           context.read<WalletCubit>().clearTopUpStatus();
-          context.push(
-            AppPaths.topUpSuccess,
-            extra: TopUpSuccessArgs(
-              amount: amount,
-              walletFlow: walletFlow,
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '\$${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)} added to your wallet successfully',
+              ),
             ),
           );
+          context.pop();
           return;
         }
 
@@ -173,6 +180,7 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
                     _AddMoneyCard(
                       balance: balance,
                       amountController: _amountController,
+                      selectedAmount: _selectedAmount,
                       onQuickAmount: _selectQuickAmount,
                     ),
                     const SizedBox(height: 24),
@@ -235,11 +243,13 @@ class _AddMoneyCard extends StatelessWidget {
   const _AddMoneyCard({
     required this.balance,
     required this.amountController,
+    required this.selectedAmount,
     required this.onQuickAmount,
   });
 
   final double balance;
   final TextEditingController amountController;
+  final double? selectedAmount;
   final ValueChanged<double> onQuickAmount;
 
   static const Color _cardBg = Color(0xFFEAF2FF);
@@ -315,8 +325,10 @@ class _AddMoneyCard extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final value = _amounts[index];
+              final isSelected = selectedAmount == value;
               return _AmountChip(
                 label: '+ \$${value.toStringAsFixed(0)}',
+                isSelected: isSelected,
                 onTap: () => onQuickAmount(value),
               );
             },
@@ -365,15 +377,22 @@ class _AddMoneyCard extends StatelessWidget {
 }
 
 class _AmountChip extends StatelessWidget {
-  const _AmountChip({required this.label, required this.onTap});
+  const _AmountChip({
+    required this.label,
+    required this.onTap,
+    this.isSelected = false,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.white,
+      color: isSelected
+          ? AppColors.primary.withValues(alpha: 0.08)
+          : AppColors.white,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -382,7 +401,10 @@ class _AmountChip extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.stroke),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.stroke,
+              width: isSelected ? 1.5 : 1,
+            ),
           ),
           child: Text(
             label,

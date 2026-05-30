@@ -6,12 +6,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/datasources/booking_remote_data_source.dart';
+import '../../data/repositories/booking_repository_impl.dart';
 import '../../domain/entities/appointment_model.dart';
+import '../../domain/repositories/booking_repository.dart';
 import '../../../appointments/data/appointment_mock_logic.dart';
 import 'upcoming_appointments_state.dart';
 
-/// Demo data while Firestore has no rows (presentation).
-const bool kPresentationMockAppointments = true;
+/// Demo data reference (disabled — live Firestore is used).
+const bool kPresentationMockAppointments = false;
 
 String _formatTime(DateTime time) => DateFormat('HH:mm').format(time);
 
@@ -30,7 +33,7 @@ List<AppointmentModel> _presentationUpcomingMocks() {
       appointmentDate: today,
       startTime: _formatTime(now.add(const Duration(minutes: 45))),
       endTime: _formatTime(now.add(const Duration(hours: 1, minutes: 45))),
-      status: 'upcoming',
+      status: 'confirmed',
       remindEnabled: true,
       type: 'offline',
       sessionStatus: 'pending',
@@ -49,7 +52,7 @@ List<AppointmentModel> _presentationUpcomingMocks() {
       appointmentDate: today,
       startTime: _formatTime(now.add(const Duration(minutes: 3))),
       endTime: _formatTime(now.add(const Duration(minutes: 33))),
-      status: 'upcoming',
+      status: 'confirmed',
       remindEnabled: false,
       type: 'offline',
       sessionStatus: 'pending',
@@ -68,7 +71,7 @@ List<AppointmentModel> _presentationUpcomingMocks() {
       appointmentDate: today,
       startTime: _formatTime(now),
       endTime: _formatTime(now.add(const Duration(minutes: 30))),
-      status: 'upcoming',
+      status: 'confirmed',
       remindEnabled: true,
       type: 'video',
       sessionStatus: 'started_by_doctor',
@@ -81,16 +84,23 @@ List<AppointmentModel> _presentationUpcomingMocks() {
 
 class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
   UpcomingAppointmentsCubit({
+    BookingRepository? repository,
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _repository = repository ??
+            BookingRepositoryImpl(
+              BookingRemoteDataSourceImpl(firestore: firestore),
+              auth: auth,
+            ),
+        _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance,
         super(const UpcomingAppointmentsInitial());
 
+  final BookingRepository _repository;
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  StreamSubscription<List<AppointmentModel>>? _subscription;
 
   void fetchUpcomingAppointments() {
     emit(const UpcomingAppointmentsLoading());
@@ -101,25 +111,13 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
       return;
     }
 
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
+    if (_auth.currentUser == null) {
       emit(const UpcomingAppointmentsLoaded([]));
       return;
     }
 
-    _subscription = _firestore
-        .collection('appointments')
-        .where('patientId', isEqualTo: uid)
-        .where('status', whereIn: ['upcoming', 'confirmed'])
-        .snapshots()
-        .listen(
-      (snapshot) {
-        final items = snapshot.docs
-            .map(AppointmentModel.fromFirestore)
-            .toList()
-          ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
-        emit(UpcomingAppointmentsLoaded(items));
-      },
+    _subscription = _repository.getUpcomingAppointments().listen(
+      (appointments) => emit(UpcomingAppointmentsLoaded(appointments)),
       onError: (Object e, StackTrace st) {
         emit(UpcomingAppointmentsError(e.toString()));
       },
@@ -218,26 +216,32 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
     }
   }
 
-  Future<void> cancelAppointment(String appointmentId) async {
+  Future<bool> cancelAppointment(String appointmentId) async {
     final current = state;
-    if (current is! UpcomingAppointmentsLoaded) return;
+    if (current is! UpcomingAppointmentsLoaded) return false;
 
-    if (!kPresentationMockAppointments) {
-      try {
-        await _firestore
-            .collection('appointments')
-            .doc(_documentIdFor(appointmentId, current))
-            .update({'status': 'cancelled'});
-      } catch (e) {
-        emit(UpcomingAppointmentsError(e.toString()));
-        return;
-      }
+    final docId = _documentIdFor(appointmentId, current);
+
+    if (kPresentationMockAppointments) {
+      final remaining = current.appointments
+          .where((a) => !_matchesId(a, appointmentId))
+          .toList();
+      emit(UpcomingAppointmentsLoaded(remaining));
+      return true;
     }
 
-    final remaining = current.appointments
-        .where((a) => !_matchesId(a, appointmentId))
-        .toList();
-    emit(UpcomingAppointmentsLoaded(remaining));
+    try {
+      await _repository.cancelAppointment(docId);
+      return true;
+    } catch (e, st) {
+      developer.log('cancelAppointment error', error: e, stackTrace: st);
+      emit(
+        const UpcomingAppointmentsError(
+          'Failed to cancel appointment. Please try again.',
+        ),
+      );
+      return false;
+    }
   }
 
   String _documentIdFor(

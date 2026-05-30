@@ -43,7 +43,7 @@ class MyWalletPage extends StatelessWidget {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: () =>
-                            context.read<WalletCubit>().listenToWallet(),
+                            context.read<WalletCubit>().loadWalletDetails(),
                         child: const Text('Retry'),
                       ),
                     ],
@@ -100,6 +100,21 @@ class _WalletLoadedBody extends StatelessWidget {
           );
         }
 
+        if (groups.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 48),
+            child: Center(
+              child: Text(
+                'No transactions yet',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+            ),
+          );
+        }
+
         final groupIndex = index - 1;
         final group = groups[groupIndex];
 
@@ -130,6 +145,6 @@ class _WalletLoadedBody extends StatelessWidget {
   }
 
   int _itemCount(List<WalletTransactionGroup> groups) {
-    return groups.isEmpty ? 1 : 1 + groups.length;
+    return groups.isEmpty ? 2 : 1 + groups.length;
   }
 }
