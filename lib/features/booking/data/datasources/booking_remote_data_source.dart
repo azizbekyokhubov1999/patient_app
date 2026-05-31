@@ -13,7 +13,7 @@ abstract class BookingRemoteDataSource {
 
   Future<List<TimeSlot>> getDoctorSlots(String doctorId, DateTime selectedDate);
 
-  Future<void> confirmAppointment(Map<String, dynamic> data);
+  Future<String> confirmAppointment(Map<String, dynamic> data);
 
   Stream<List<AppointmentModel>> getUpcomingAppointments(String uid);
 
@@ -185,9 +185,10 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
   }
 
   @override
-  Future<void> confirmAppointment(Map<String, dynamic> data) async {
+  Future<String> confirmAppointment(Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('appointments').add(data);
+      final docRef = await _firestore.collection('appointments').add(data);
+      return docRef.id;
     } catch (e) {
       throw Exception('Failed to save appointment to Firestore: $e');
     }

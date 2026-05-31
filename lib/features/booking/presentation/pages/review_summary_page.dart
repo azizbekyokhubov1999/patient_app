@@ -160,9 +160,16 @@ class _AppointmentOverviewViewState extends State<_AppointmentOverviewView> {
         }
         if (state is BookingConfirmed) {
           final doctorName = widget.args.doctor?.name ?? 'Dr. Jenny William';
+          final confirmed = state;
+          final displayId = confirmed.appointmentId.length >= 8
+              ? '#${confirmed.appointmentId.substring(0, 8).toUpperCase()}'
+              : '#${confirmed.appointmentId.toUpperCase()}';
           final receipt = buildEReceiptArgsFromReviewSummary(
             widget.args,
             discount: _discount,
+            appointmentId: displayId,
+            patientPhone: confirmed.patientPhone,
+            qrAppointmentId: confirmed.appointmentId,
           );
           SchedulerBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;

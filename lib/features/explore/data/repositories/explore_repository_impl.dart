@@ -8,7 +8,11 @@ class ExploreRepositoryImpl implements ExploreRepository {
   final ExploreRemoteDataSource _remote;
 
   @override
-  Future<List<Hospital>> getNearbyHospitals() {
-    return _remote.fetchNearbyHospitals();
+  Future<List<Hospital>> getNearbyHospitals() async {
+    try {
+      return await _remote.fetchNearbyHospitals();
+    } catch (e) {
+      throw Exception('Failed to fetch nearby hospitals: $e');
+    }
   }
 }

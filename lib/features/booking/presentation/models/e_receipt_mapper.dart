@@ -1,19 +1,22 @@
 import '../../domain/entities/package_type.dart';
 import 'booking_route_args.dart';
 import 'e_receipt_args.dart';
+import 'queue_status_args.dart';
 
 /// Builds [EReceiptArgs] from review-summary route data.
 EReceiptArgs buildEReceiptArgsFromReviewSummary(
   ReviewSummaryArgs args, {
   double discount = 0,
   String? appointmentId,
-  String patientPhone = '+1 (208) 555-0112',
+  String patientPhone = '',
+  String? qrAppointmentId,
 }) {
   final subTotal = _packagePrice(args.selectedPackage);
   final total = (subTotal - discount).clamp(0.0, double.infinity);
+  final displayId = appointmentId ?? _generateAppointmentId();
 
   return EReceiptArgs(
-    appointmentId: appointmentId ?? _generateAppointmentId(),
+    appointmentId: displayId,
     patientName: args.patientInfo.name,
     patientPhone: patientPhone,
     doctorName: args.doctor?.name ?? 'Dr. Jenny William',
@@ -24,6 +27,9 @@ EReceiptArgs buildEReceiptArgsFromReviewSummary(
     subTotal: subTotal,
     discount: discount,
     totalAmount: total,
+    queueStatusAfterScan: qrAppointmentId != null
+        ? QueueStatusArgs(appointmentId: qrAppointmentId)
+        : null,
   );
 }
 

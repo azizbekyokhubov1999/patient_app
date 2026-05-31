@@ -17,8 +17,24 @@ class ExploreCubit extends Cubit<ExploreState> {
   final ExploreRepository _repository;
 
   Future<void> load() async {
-    final hospitals = await _repository.getNearbyHospitals();
-    emit(state.copyWith(hospitals: hospitals, selectedHospitalIndex: 0));
+    try {
+      final hospitals = await _repository.getNearbyHospitals();
+      emit(
+        state.copyWith(
+          hospitals: hospitals,
+          selectedHospitalIndex: 0,
+          errorMessage: null,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          hospitals: const [],
+          selectedHospitalIndex: 0,
+          errorMessage: 'Failed to load hospitals. Please try again.',
+        ),
+      );
+    }
   }
 
   void selectHospital(int index) {

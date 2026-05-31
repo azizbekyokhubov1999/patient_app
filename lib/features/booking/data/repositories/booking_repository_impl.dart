@@ -34,9 +34,9 @@ class BookingRepositoryImpl implements BookingRepository {
   }
 
   @override
-  Future<void> confirmAppointment(Map<String, dynamic> data) async {
+  Future<String> confirmAppointment(Map<String, dynamic> data) async {
     try {
-      await _remoteDataSource.confirmAppointment(data);
+      return await _remoteDataSource.confirmAppointment(data);
     } catch (e) {
       throw Exception('Failed to confirm appointment: $e');
     }

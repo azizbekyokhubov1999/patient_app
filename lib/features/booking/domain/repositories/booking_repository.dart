@@ -12,7 +12,7 @@ abstract class BookingRepository {
     DateTime selectedDate,
   );
 
-  Future<void> confirmAppointment(Map<String, dynamic> data);
+  Future<String> confirmAppointment(Map<String, dynamic> data);
 
   Stream<List<AppointmentModel>> getUpcomingAppointments();
 

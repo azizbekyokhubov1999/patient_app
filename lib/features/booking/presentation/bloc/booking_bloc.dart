@@ -545,6 +545,8 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
 
     if (current is BookingConfirmed) {
       return BookingConfirmed(
+        appointmentId: current.appointmentId,
+        patientPhone: current.patientPhone,
         selectedDate: current.selectedDate,
         selectedTime: current.selectedTime,
         selectedPackage: current.selectedPackage,
@@ -890,9 +892,16 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         }
       }
 
-      await _repository.confirmAppointment(appointmentData);
+      final appointmentId = await _repository.confirmAppointment(appointmentData);
+
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final phone = userDoc.data()?['phone'] as String? ?? '';
+
       emit(
         BookingConfirmed(
+          appointmentId: appointmentId,
+          patientPhone: phone,
           selectedDate: current.selectedDate,
           selectedTime: current.selectedTime,
           selectedPackage: current.selectedPackage,

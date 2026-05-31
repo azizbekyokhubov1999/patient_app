@@ -147,7 +147,10 @@ class _EReceiptPageState extends State<EReceiptPage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                      child: QrSection(appointmentId: args.appointmentId),
+                      child: QrSection(
+                        appointmentId: args.appointmentId,
+                        qrData: args.queueStatusAfterScan?.appointmentId,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     const DashedDivider(showNotches: true),

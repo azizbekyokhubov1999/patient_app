@@ -180,6 +180,8 @@ class BookingConfirming extends BookingState {
 
 class BookingConfirmed extends BookingState {
   const BookingConfirmed({
+    required this.appointmentId,
+    required this.patientPhone,
     required super.selectedDate,
     super.selectedTime,
     super.selectedPackage,
@@ -192,6 +194,9 @@ class BookingConfirmed extends BookingState {
     super.selfAutofillGender,
     super.selfAutofillGeneration,
   });
+
+  final String appointmentId;
+  final String patientPhone;
 }
 
 class BookingConfirmFailure extends BookingState {

@@ -6,6 +6,7 @@ class ExploreState {
     required this.userLatitude,
     required this.userLongitude,
     required this.selectedHospitalIndex,
+    this.errorMessage,
   });
 
   /// Mock user position (lower Manhattan). Replace with GPS later.
@@ -16,6 +17,7 @@ class ExploreState {
   final double userLatitude;
   final double userLongitude;
   final int selectedHospitalIndex;
+  final String? errorMessage;
 
   Hospital? get selectedHospital {
     if (hospitals.isEmpty) return null;
@@ -28,6 +30,7 @@ class ExploreState {
     double? userLatitude,
     double? userLongitude,
     int? selectedHospitalIndex,
+    Object? errorMessage = _sentinel,
   }) {
     return ExploreState(
       hospitals: hospitals ?? this.hospitals,
@@ -35,6 +38,11 @@ class ExploreState {
       userLongitude: userLongitude ?? this.userLongitude,
       selectedHospitalIndex:
           selectedHospitalIndex ?? this.selectedHospitalIndex,
+      errorMessage: identical(errorMessage, _sentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
+
+  static const Object _sentinel = Object();
 }
