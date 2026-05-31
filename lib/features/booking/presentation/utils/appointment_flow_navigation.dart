@@ -109,14 +109,19 @@ Future<void> navigateJoinSession(
       await context.push(
         AppPaths.chatDetail,
         extra: ChatModel(
-          chatId: 'chat-${appointment.documentId}',
+          id: 'chat-${appointment.documentId}',
+          patientId: '',
           doctorId: appointment.doctorId ?? appointment.documentId,
           doctorName: appointment.doctorName,
-          doctorAvatar: appointment.doctorImageUrl ?? '',
+          doctorImage: appointment.doctorImageUrl ?? '',
+          doctorSpecialty: appointment.doctorSpecialty,
+          patientName: '',
+          patientImage: '',
           lastMessage: 'Session ready — tap to open chat',
           lastMessageTime: DateTime.now(),
           unreadCount: 0,
-          isReadBySub: true,
+          appointmentId: appointment.documentId,
+          createdAt: DateTime.now(),
           isOnline: true,
         ),
       );

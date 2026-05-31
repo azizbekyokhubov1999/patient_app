@@ -11,6 +11,14 @@ import '../../../payment/domain/repositories/wallet_repository.dart';
 import '../../../profile/data/datasources/profile_remote_data_source.dart';
 import '../../../profile/data/repositories/profile_repository_impl.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
+import '../../../chat/data/datasources/chat_remote_data_source.dart';
+import '../../../chat/data/repositories/chat_repository_impl.dart';
+import '../../../chat/domain/repositories/chat_repository.dart';
+import '../../../notification/data/datasources/notification_remote_data_source.dart';
+import '../../../notification/data/repositories/notification_repository_impl.dart';
+import '../../../notification/domain/repositories/notification_repository.dart';
+import 'package:intl/intl.dart';
+
 import '../../domain/entities/card_model.dart';
 import '../../domain/entities/package_type.dart';
 import '../../domain/entities/payment_method_type.dart';
@@ -38,12 +46,18 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     FirebaseAuth? auth,
     ProfileRepository? profileRepository,
     WalletRepository? walletRepository,
+    NotificationRepository? notificationRepository,
+    ChatRepository? chatRepository,
   })  : _repository = repository,
         _auth = auth ?? FirebaseAuth.instance,
         _profileRepository = profileRepository ??
             ProfileRepositoryImpl(ProfileRemoteDataSourceImpl(auth: auth)),
         _walletRepository = walletRepository ??
             WalletRepositoryImpl(WalletRemoteDataSourceImpl()),
+        _notificationRepository = notificationRepository ??
+            NotificationRepositoryImpl(NotificationRemoteDataSourceImpl()),
+        _chatRepository = chatRepository ??
+            ChatRepositoryImpl(ChatRemoteDataSourceImpl()),
         _activeDoctorId = _resolveDoctorId(doctor, doctorId),
         _doctorName = doctor?.name ?? '',
         _doctorSpecialty = doctor?.specialty ?? '',
@@ -80,6 +94,8 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   final BookingRepository _repository;
   final ProfileRepository _profileRepository;
   final WalletRepository _walletRepository;
+  final NotificationRepository _notificationRepository;
+  final ChatRepository _chatRepository;
   final FirebaseAuth _auth;
   String _activeDoctorId;
   final String _doctorName;
@@ -894,9 +910,40 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
 
       final appointmentId = await _repository.confirmAppointment(appointmentData);
 
+      try {
+        await _notificationRepository.createNotification(
+          userId: uid,
+          type: 'appointmentConfirmed',
+          title: 'Appointment Confirmed!',
+          body:
+              'Your appointment with $_doctorName has been successfully booked for ${DateFormat('MMM d').format(current.selectedDate)} at ${current.selectedTime}.',
+          relatedId: appointmentId,
+        );
+      } catch (_) {
+        // Do not fail booking if notification write fails.
+      }
+
       final userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final phone = userDoc.data()?['phone'] as String? ?? '';
+      final userData = userDoc.data() ?? {};
+      final patientImage = userData['photoUrl'] as String? ?? '';
+
+      try {
+        await _chatRepository.createChat(
+          patientId: uid,
+          doctorId: _activeDoctorId,
+          doctorName: _doctorName,
+          doctorImage: _doctorImage,
+          doctorSpecialty: _doctorSpecialty,
+          patientName: patientInfo.name,
+          patientImage: patientImage,
+          appointmentId: appointmentId,
+        );
+      } catch (_) {
+        // Do not fail booking if chat creation fails.
+      }
+
+      final phone = userData['phone'] as String? ?? '';
 
       emit(
         BookingConfirmed(

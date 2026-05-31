@@ -2,26 +2,44 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatModel {
   const ChatModel({
-    required this.chatId,
+    required this.id,
+    required this.patientId,
     required this.doctorId,
     required this.doctorName,
-    required this.doctorAvatar,
+    required this.doctorImage,
+    required this.doctorSpecialty,
+    required this.patientName,
+    required this.patientImage,
     required this.lastMessage,
     required this.lastMessageTime,
     required this.unreadCount,
-    required this.isReadBySub,
-    required this.isOnline,
+    required this.appointmentId,
+    required this.createdAt,
+    this.isOnline = true,
   });
 
-  final String chatId;
+  final String id;
+  final String patientId;
   final String doctorId;
   final String doctorName;
-  final String doctorAvatar;
+  final String doctorImage;
+  final String doctorSpecialty;
+  final String patientName;
+  final String patientImage;
   final String lastMessage;
   final DateTime lastMessageTime;
   final int unreadCount;
-  final bool isReadBySub;
+  final String appointmentId;
+  final DateTime createdAt;
+
+  /// UI mock: always show online indicator.
   final bool isOnline;
+
+  String get chatId => id;
+
+  String get doctorAvatar => doctorImage;
+
+  bool get isReadBySub => unreadCount == 0;
 
   String get firstName {
     final parts = doctorName.trim().split(RegExp(r'\s+'));
@@ -33,64 +51,60 @@ class ChatModel {
     return first;
   }
 
-  factory ChatModel.fromJson(Map<String, dynamic> json) {
-    return ChatModel(
-      chatId: json['chatId'] as String? ?? json['id'] as String? ?? '',
-      doctorId: json['doctorId'] as String? ?? '',
-      doctorName: json['doctorName'] as String? ?? '',
-      doctorAvatar: json['doctorAvatar'] as String? ?? '',
-      lastMessage: json['lastMessage'] as String? ?? '',
-      lastMessageTime: _parseDateTime(json['lastMessageTime']),
-      unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
-      isReadBySub: json['isReadBySub'] as bool? ?? false,
-      isOnline: json['isOnline'] as bool? ?? false,
-    );
-  }
-
   factory ChatModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data() ?? {};
-    return ChatModel.fromJson({
-      ...data,
-      'chatId': doc.id,
-    });
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'chatId': chatId,
-      'doctorId': doctorId,
-      'doctorName': doctorName,
-      'doctorAvatar': doctorAvatar,
-      'lastMessage': lastMessage,
-      'lastMessageTime': Timestamp.fromDate(lastMessageTime),
-      'unreadCount': unreadCount,
-      'isReadBySub': isReadBySub,
-      'isOnline': isOnline,
-    };
+    return ChatModel(
+      id: doc.id,
+      patientId: data['patientId'] as String? ?? '',
+      doctorId: data['doctorId'] as String? ?? '',
+      doctorName: data['doctorName'] as String? ?? '',
+      doctorImage: data['doctorImage'] as String? ??
+          data['doctorAvatar'] as String? ??
+          '',
+      doctorSpecialty: data['doctorSpecialty'] as String? ?? '',
+      patientName: data['patientName'] as String? ?? '',
+      patientImage: data['patientImage'] as String? ?? '',
+      lastMessage: data['lastMessage'] as String? ?? '',
+      lastMessageTime: _parseDateTime(data['lastMessageTime']),
+      unreadCount: (data['unreadCount'] as num?)?.toInt() ?? 0,
+      appointmentId: data['appointmentId'] as String? ?? '',
+      createdAt: _parseDateTime(data['createdAt']),
+      isOnline: true,
+    );
   }
 
   ChatModel copyWith({
-    String? chatId,
+    String? id,
+    String? patientId,
     String? doctorId,
     String? doctorName,
-    String? doctorAvatar,
+    String? doctorImage,
+    String? doctorSpecialty,
+    String? patientName,
+    String? patientImage,
     String? lastMessage,
     DateTime? lastMessageTime,
     int? unreadCount,
-    bool? isReadBySub,
+    String? appointmentId,
+    DateTime? createdAt,
     bool? isOnline,
   }) {
     return ChatModel(
-      chatId: chatId ?? this.chatId,
+      id: id ?? this.id,
+      patientId: patientId ?? this.patientId,
       doctorId: doctorId ?? this.doctorId,
       doctorName: doctorName ?? this.doctorName,
-      doctorAvatar: doctorAvatar ?? this.doctorAvatar,
+      doctorImage: doctorImage ?? this.doctorImage,
+      doctorSpecialty: doctorSpecialty ?? this.doctorSpecialty,
+      patientName: patientName ?? this.patientName,
+      patientImage: patientImage ?? this.patientImage,
       lastMessage: lastMessage ?? this.lastMessage,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
       unreadCount: unreadCount ?? this.unreadCount,
-      isReadBySub: isReadBySub ?? this.isReadBySub,
+      appointmentId: appointmentId ?? this.appointmentId,
+      createdAt: createdAt ?? this.createdAt,
       isOnline: isOnline ?? this.isOnline,
     );
   }

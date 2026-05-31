@@ -1,15 +1,25 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/notification_model.dart';
 
 abstract class NotificationRemoteDataSource {
-  Stream<List<NotificationModel>> watchNotifications(String userId);
+  Stream<List<NotificationModel>> getNotifications(String uid);
 
-  Future<void> markAsRead(String userId, String notificationId);
+  Future<void> markAsRead(String notificationId);
 
-  Future<void> markGroupAsRead(String userId, List<String> notificationIds);
+  Future<void> markGroupAsRead(List<String> notificationIds);
 
-  Future<void> deleteNotification(String userId, String notificationId);
+  Future<void> createNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String body,
+    required String relatedId,
+  });
+
+  Future<void> deleteNotification(String notificationId);
 }
 
 class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
@@ -18,44 +28,102 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
 
   final FirebaseFirestore _firestore;
 
-  CollectionReference<Map<String, dynamic>> _collection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('notifications');
-  }
+  CollectionReference<Map<String, dynamic>> get _collection =>
+      _firestore.collection('notifications');
 
   @override
-  Stream<List<NotificationModel>> watchNotifications(String userId) {
-    return _collection(userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map(
-      (snapshot) {
-        return snapshot.docs.map((doc) {
-          final data = Map<String, dynamic>.from(doc.data());
-          data['id'] = doc.id;
-          return NotificationModel.fromJson(data);
-        }).toList();
-      },
-    );
-  }
-
-  @override
-  Future<void> markAsRead(String userId, String notificationId) {
-    return _collection(userId).doc(notificationId).update({'isRead': true});
-  }
-
-  @override
-  Future<void> markGroupAsRead(String userId, List<String> notificationIds) {
-    if (notificationIds.isEmpty) return Future<void>.value();
-    final batch = _firestore.batch();
-    final col = _collection(userId);
-    for (final id in notificationIds) {
-      batch.update(col.doc(id), {'isRead': true});
+  Stream<List<NotificationModel>> getNotifications(String uid) {
+    final trimmedUid = uid.trim();
+    if (trimmedUid.isEmpty) {
+      return Stream<List<NotificationModel>>.value(const []);
     }
-    return batch.commit();
+
+    final controller = StreamController<List<NotificationModel>>.broadcast();
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? subscription;
+    var useOrderedQuery = true;
+
+    void listen() {
+      subscription?.cancel();
+
+      Query<Map<String, dynamic>> query = _collection.where(
+        'userId',
+        isEqualTo: trimmedUid,
+      );
+
+      if (useOrderedQuery) {
+        query = query.orderBy('createdAt', descending: true);
+      }
+
+      subscription = query.snapshots().listen(
+        (snapshot) {
+          final items = snapshot.docs
+              .map(NotificationModel.fromFirestore)
+              .toList(growable: false);
+          if (!useOrderedQuery) {
+            items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }
+          controller.add(items);
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (useOrderedQuery) {
+            useOrderedQuery = false;
+            listen();
+            return;
+          }
+          controller.addError(error, stackTrace);
+        },
+      );
+    }
+
+    listen();
+    controller.onCancel = () => subscription?.cancel();
+    return controller.stream;
   }
 
   @override
-  Future<void> deleteNotification(String userId, String notificationId) {
-    return _collection(userId).doc(notificationId).delete();
+  Future<void> markAsRead(String notificationId) async {
+    final trimmedId = notificationId.trim();
+    if (trimmedId.isEmpty) return;
+
+    await _collection.doc(trimmedId).update({'isRead': true});
+  }
+
+  @override
+  Future<void> markGroupAsRead(List<String> notificationIds) async {
+    final ids = notificationIds.map((id) => id.trim()).where((id) => id.isNotEmpty);
+    if (ids.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (final id in ids) {
+      batch.update(_collection.doc(id), {'isRead': true});
+    }
+    await batch.commit();
+  }
+
+  @override
+  Future<void> createNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String body,
+    required String relatedId,
+  }) async {
+    await _collection.add({
+      'userId': userId,
+      'type': type,
+      'title': title,
+      'body': body,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'relatedId': relatedId,
+    });
+  }
+
+  @override
+  Future<void> deleteNotification(String notificationId) async {
+    final trimmedId = notificationId.trim();
+    if (trimmedId.isEmpty) return;
+
+    await _collection.doc(trimmedId).delete();
   }
 }

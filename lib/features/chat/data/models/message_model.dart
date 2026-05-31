@@ -19,79 +19,81 @@ extension MessageTypeX on MessageType {
 
 class MessageModel {
   const MessageModel({
-    required this.messageId,
+    required this.id,
     required this.senderId,
     required this.senderName,
-    required this.receiverId,
-    required this.content,
+    required this.text,
     required this.type,
-    required this.timestamp,
+    required this.imageUrl,
+    required this.createdAt,
+    required this.isRead,
     this.duration,
   });
 
-  final String messageId;
+  final String id;
   final String senderId;
   final String senderName;
-  final String receiverId;
-  final String content;
-  final MessageType type;
-  final DateTime timestamp;
+  final String text;
+  final String type;
+  final String imageUrl;
+  final DateTime createdAt;
+  final bool isRead;
   final String? duration;
 
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
-    return MessageModel(
-      messageId: json['messageId'] as String? ?? json['id'] as String? ?? '',
-      senderId: json['senderId'] as String? ?? '',
-      senderName: json['senderName'] as String? ?? '',
-      receiverId: json['receiverId'] as String? ?? '',
-      content: json['content'] as String? ?? '',
-      type: MessageTypeX.fromFirestoreValue(json['type'] as String?),
-      timestamp: _parseDateTime(json['timestamp']),
-      duration: json['duration'] as String?,
-    );
+  String get messageId => id;
+
+  MessageType get messageType => MessageTypeX.fromFirestoreValue(type);
+
+  String get content {
+    if (messageType == MessageType.image) {
+      return imageUrl.isNotEmpty ? imageUrl : text;
+    }
+    return text;
   }
+
+  DateTime get timestamp => createdAt;
 
   factory MessageModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data() ?? {};
-    return MessageModel.fromJson({
-      ...data,
-      'messageId': doc.id,
-    });
-  }
+    final rawType = data['type'] as String? ?? 'text';
 
-  Map<String, dynamic> toJson() {
-    return {
-      'messageId': messageId,
-      'senderId': senderId,
-      'senderName': senderName,
-      'receiverId': receiverId,
-      'content': content,
-      'type': type.firestoreValue,
-      'timestamp': Timestamp.fromDate(timestamp),
-      if (duration != null) 'duration': duration,
-    };
+    return MessageModel(
+      id: doc.id,
+      senderId: data['senderId'] as String? ?? '',
+      senderName: data['senderName'] as String? ?? '',
+      text: data['text'] as String? ?? data['content'] as String? ?? '',
+      type: rawType,
+      imageUrl: data['imageUrl'] as String? ?? '',
+      createdAt: _parseDateTime(
+        data['createdAt'] ?? data['timestamp'],
+      ),
+      isRead: data['isRead'] as bool? ?? false,
+      duration: data['duration'] as String?,
+    );
   }
 
   MessageModel copyWith({
-    String? messageId,
+    String? id,
     String? senderId,
     String? senderName,
-    String? receiverId,
-    String? content,
-    MessageType? type,
-    DateTime? timestamp,
+    String? text,
+    String? type,
+    String? imageUrl,
+    DateTime? createdAt,
+    bool? isRead,
     Object? duration = _sentinel,
   }) {
     return MessageModel(
-      messageId: messageId ?? this.messageId,
+      id: id ?? this.id,
       senderId: senderId ?? this.senderId,
       senderName: senderName ?? this.senderName,
-      receiverId: receiverId ?? this.receiverId,
-      content: content ?? this.content,
+      text: text ?? this.text,
       type: type ?? this.type,
-      timestamp: timestamp ?? this.timestamp,
+      imageUrl: imageUrl ?? this.imageUrl,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
       duration: identical(duration, _sentinel)
           ? this.duration
           : duration as String?,

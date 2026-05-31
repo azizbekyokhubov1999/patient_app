@@ -51,7 +51,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               Container(
-                padding: message.type == MessageType.image
+                padding: message.messageType == MessageType.image
                     ? const EdgeInsets.all(6)
                     : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
@@ -99,7 +99,7 @@ class _MessageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    switch (message.type) {
+    switch (message.messageType) {
       case MessageType.text:
         return Text(
           message.content,

@@ -100,14 +100,19 @@ void openChatFromCall(BuildContext context, CallSessionArgs args) {
   context.push(
     AppPaths.chatDetail,
     extra: ChatModel(
-      chatId: args.appointmentId,
+      id: args.appointmentId,
+      patientId: '',
       doctorId: args.doctorId,
       doctorName: args.doctorName,
-      doctorAvatar: args.doctorAvatar,
+      doctorImage: args.doctorAvatar,
+      doctorSpecialty: args.doctorSpecialty,
+      patientName: '',
+      patientImage: '',
       lastMessage: '',
       lastMessageTime: DateTime.now(),
       unreadCount: 0,
-      isReadBySub: true,
+      appointmentId: args.appointmentId,
+      createdAt: DateTime.now(),
       isOnline: true,
     ),
   );

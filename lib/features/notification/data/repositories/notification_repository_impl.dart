@@ -17,30 +17,36 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Stream<List<NotificationModel>> getNotifications() {
     return _auth.authStateChanges().asyncExpand((user) {
       if (user == null) {
-        return Stream<List<NotificationModel>>.value(<NotificationModel>[]);
+        return Stream<List<NotificationModel>>.value(const []);
       }
-      return _remote.watchNotifications(user.uid);
+      return _remote.getNotifications(user.uid);
     });
   }
 
   @override
-  Future<void> markAsRead(String id) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _remote.markAsRead(user.uid, id);
-  }
+  Future<void> markAsRead(String id) => _remote.markAsRead(id);
 
   @override
-  Future<void> markGroupAsRead(List<String> ids) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _remote.markGroupAsRead(user.uid, ids);
-  }
+  Future<void> markGroupAsRead(List<String> ids) =>
+      _remote.markGroupAsRead(ids);
 
   @override
-  Future<void> deleteNotification(String id) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _remote.deleteNotification(user.uid, id);
-  }
+  Future<void> createNotification({
+    required String userId,
+    required String type,
+    required String title,
+    required String body,
+    required String relatedId,
+  }) =>
+      _remote.createNotification(
+        userId: userId,
+        type: type,
+        title: title,
+        body: body,
+        relatedId: relatedId,
+      );
+
+  @override
+  Future<void> deleteNotification(String id) =>
+      _remote.deleteNotification(id);
 }

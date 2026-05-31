@@ -21,9 +21,8 @@ import '../widgets/notification_group_header.dart';
 import '../widgets/notification_item.dart';
 
 Doctor _doctorForReview(NotificationModel notification) {
-  final name = (notification.relatedId != null &&
-          notification.relatedId!.isNotEmpty)
-      ? notification.relatedId!.replaceAll('_', ' ')
+  final name = notification.relatedId.isNotEmpty
+      ? notification.relatedId.replaceAll('_', ' ')
       : 'Doctor';
   return Doctor(
     name: name,

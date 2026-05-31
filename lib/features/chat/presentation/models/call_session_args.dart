@@ -29,7 +29,9 @@ class CallSessionArgs {
       appointmentId: chat.chatId,
       doctorId: chat.doctorId,
       doctorName: chat.doctorName,
-      doctorSpecialty: 'Dentist',
+      doctorSpecialty: chat.doctorSpecialty.isNotEmpty
+          ? chat.doctorSpecialty
+          : 'Dentist',
       doctorAvatar: chat.doctorAvatar,
       initialVideoOn: video,
     );

@@ -28,9 +28,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _messageSearchVisible = false;
   bool _notificationsMuted = false;
 
-  static const String _patientAvatar =
-      'https://picsum.photos/200?patient-jennifer';
-
   @override
   void initState() {
     super.initState();
@@ -58,11 +55,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final text = _inputController.text;
     if (text.trim().isEmpty) return;
     final cubit = context.read<ChatDetailCubit>();
-    cubit.sendTextMessage(
-      widget.chat.chatId,
-      cubit.currentUserId,
-      text,
-    );
+    cubit.sendText(widget.chat.chatId, text);
     _inputController.clear();
   }
 
@@ -208,7 +201,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           chat: widget.chat,
                           currentUserId:
                               context.read<ChatDetailCubit>().currentUserId,
-                          patientAvatar: _patientAvatar,
+                          patientAvatar: widget.chat.patientImage,
                         ),
                       ),
                       SafeArea(
@@ -221,9 +214,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           child: ChatInputField(
                             controller: _inputController,
                             onSend: (_) => _sendMessage(context),
-                            onAttachTap: () => context
-                                .read<ChatDetailCubit>()
-                                .sendImageMessage(widget.chat.chatId),
+                            onAttachTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Image sharing coming soon'),
+                                ),
+                              );
+                            },
                             onMicTap: () => context
                                 .read<ChatDetailCubit>()
                                 .sendVoiceMessage(

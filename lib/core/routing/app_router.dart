@@ -785,15 +785,22 @@ abstract final class AppRouter {
               body: const Center(child: Text('Chat not found')),
             );
           }
-          final uid =
-              FirebaseAuth.instance.currentUser?.uid ?? 'patient-demo';
+          final auth = FirebaseAuth.instance.currentUser;
+          final uid = auth?.uid ?? '';
+          final userName = auth?.displayName?.trim().isNotEmpty == true
+              ? auth!.displayName!.trim()
+              : extra.patientName;
+          final deps = AppDependencies.instance;
           return BlocProvider(
             create: (_) => ChatDetailCubit(
+              repository: deps.chatRepository,
               currentUserId: uid,
-              currentUserName: 'Jennifer Aaker',
+              currentUserName: userName,
               peerId: extra.doctorId,
               peerName: extra.doctorName,
-            )..listenToMessages(extra.chatId),
+            )
+              ..loadMessages(extra.chatId)
+              ..markAsRead(extra.chatId),
             child: ChatDetailPage(chat: extra),
           );
         },
@@ -887,7 +894,9 @@ abstract final class AppRouter {
               GoRoute(
                 path: AppPaths.chat,
                 builder: (context, state) => BlocProvider(
-                  create: (_) => ChatCubit()..streamChats(),
+                  create: (_) => ChatCubit(
+                    repository: AppDependencies.instance.chatRepository,
+                  )..loadChats(),
                   child: const ChatListPage(),
                 ),
               ),

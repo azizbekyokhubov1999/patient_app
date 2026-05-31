@@ -5,24 +5,27 @@ import 'notification_type.dart';
 class NotificationModel {
   const NotificationModel({
     required this.id,
+    required this.userId,
     required this.type,
     required this.title,
     required this.body,
     required this.createdAt,
     required this.isRead,
-    this.relatedId,
+    required this.relatedId,
   });
 
   final String id;
+  final String userId;
   final NotificationType type;
   final String title;
   final String body;
   final DateTime createdAt;
   final bool isRead;
-  final String? relatedId;
+  final String relatedId;
 
   NotificationModel copyWith({
     String? id,
+    String? userId,
     NotificationType? type,
     String? title,
     String? body,
@@ -32,6 +35,7 @@ class NotificationModel {
   }) {
     return NotificationModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       type: type ?? this.type,
       title: title ?? this.title,
       body: body ?? this.body,
@@ -44,6 +48,7 @@ class NotificationModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'type': type.name,
       'title': title,
       'body': body,
@@ -53,7 +58,14 @@ class NotificationModel {
     };
   }
 
-  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+  factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
+    return NotificationModel.fromJson(
+      doc.data() as Map<String, dynamic>? ?? {},
+      doc.id,
+    );
+  }
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json, [String? id]) {
     final createdRaw = json['createdAt'];
     DateTime createdAt;
     if (createdRaw is Timestamp) {
@@ -67,13 +79,14 @@ class NotificationModel {
     }
 
     return NotificationModel(
-      id: json['id'] as String? ?? '',
+      id: id ?? json['id'] as String? ?? '',
+      userId: json['userId'] as String? ?? '',
       type: _parseType(json['type'] as String?),
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? '',
       createdAt: createdAt,
       isRead: json['isRead'] as bool? ?? false,
-      relatedId: json['relatedId'] as String?,
+      relatedId: json['relatedId'] as String? ?? '',
     );
   }
 
@@ -81,6 +94,11 @@ class NotificationModel {
     if (raw == null || raw.isEmpty) {
       return NotificationType.appointmentConfirmed;
     }
+
+    if (raw == 'paymentAdded') {
+      return NotificationType.paymentMethodAdded;
+    }
+
     for (final value in NotificationType.values) {
       if (value.name == raw) return value;
     }
