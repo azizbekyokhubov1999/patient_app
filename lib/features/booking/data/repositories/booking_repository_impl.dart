@@ -68,4 +68,11 @@ class BookingRepositoryImpl implements BookingRepository {
       throw Exception('Failed to cancel appointment: $e');
     }
   }
+
+  @override
+  Future<List<AppointmentModel>> autoCompleteExpiredAppointments() {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return Future.value(const []);
+    return _remoteDataSource.autoCompleteExpiredAppointments(uid);
+  }
 }

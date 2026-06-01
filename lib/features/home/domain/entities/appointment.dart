@@ -5,6 +5,7 @@ class Appointment {
     required this.rating,
     required this.dateLabel,
     required this.timeLabel,
+    this.doctorImageUrl,
   });
 
   final String doctorName;
@@ -12,4 +13,5 @@ class Appointment {
   final double rating;
   final String dateLabel;
   final String timeLabel;
+  final String? doctorImageUrl;
 }

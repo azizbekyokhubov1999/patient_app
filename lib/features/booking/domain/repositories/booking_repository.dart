@@ -21,4 +21,6 @@ abstract class BookingRepository {
   Stream<List<AppointmentModel>> getCancelledAppointments();
 
   Future<void> cancelAppointment(String appointmentId);
+
+  Future<List<AppointmentModel>> autoCompleteExpiredAppointments();
 }

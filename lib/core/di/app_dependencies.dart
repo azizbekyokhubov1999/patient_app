@@ -12,8 +12,11 @@ import '../../features/auth/domain/usecases/sign_out_usecase.dart';
 import '../../features/auth/domain/usecases/sign_up_usecase.dart';
 import '../../features/auth/presentation/manager/auth_cubit.dart';
 import '../../features/home/data/datasources/doctor_remote_data_source.dart';
+import '../../features/home/data/datasources/home_remote_data_source.dart';
 import '../../features/home/data/repositories/doctors_repository_impl.dart';
+import '../../features/home/data/repositories/home_repository_impl.dart';
 import '../../features/home/domain/repositories/doctors_repository.dart';
+import '../../features/home/domain/repositories/home_repository.dart';
 import '../../features/home/presentation/manager/top_specialist_cubit.dart';
 import '../../features/profile/data/datasources/coupons_remote_data_source.dart';
 import '../../features/profile/data/datasources/profile_remote_data_source.dart';
@@ -46,6 +49,7 @@ final class AppDependencies {
   late final ProfileRepository profileRepository;
   late final CouponsRepository couponsRepository;
   late final DoctorsRepository doctorsRepository;
+  late final HomeRepository homeRepository;
   late final FavouritesRepository favouritesRepository;
   late final NotificationRepository notificationRepository;
   late final ChatRepository chatRepository;
@@ -83,6 +87,9 @@ final class AppDependencies {
 
     final doctorRemote = DoctorRemoteDataSourceImpl(firestore: db);
     doctorsRepository = DoctorsRepositoryImpl(doctorRemote);
+    homeRepository = HomeRepositoryImpl(
+      HomeRemoteDataSourceImpl(firestore: db),
+    );
     favouritesRepository = FavouritesRepositoryImpl(doctorsRepository);
 
     notificationRepository = NotificationRepositoryImpl(

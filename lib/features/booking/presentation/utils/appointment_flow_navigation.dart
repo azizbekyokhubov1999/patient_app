@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_paths.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../appointments/data/appointment_mock_logic.dart';
 import '../../../chat/data/models/chat_model.dart';
 import '../../../chat/presentation/models/call_session_args.dart';
@@ -13,6 +16,7 @@ import '../models/queue_status_args.dart';
 import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/doctor_review.dart';
 import '../../../home/domain/entities/working_hours_entry.dart';
+import '../../domain/utils/appointment_time_helper.dart';
 
 EReceiptArgs eReceiptArgsFromAppointment(AppointmentModel appointment) {
   return EReceiptArgs(
@@ -80,8 +84,12 @@ Future<void> navigateJoinSession(
   BuildContext context,
   AppointmentModel appointment,
 ) async {
-  switch (appointment.type) {
-    case 'video':
+  final kind = normalizePackageType(appointment.packageType);
+
+  switch (kind) {
+    case 'messaging':
+      await _openChatForAppointment(context, appointment);
+    case 'videocall':
       await context.push(
         AppPaths.videoCall,
         extra: CallSessionArgs(
@@ -93,7 +101,7 @@ Future<void> navigateJoinSession(
           initialVideoOn: true,
         ),
       );
-    case 'voice':
+    case 'voicecall':
       await context.push(
         AppPaths.voiceCall,
         extra: CallSessionArgs(
@@ -105,34 +113,79 @@ Future<void> navigateJoinSession(
           initialVideoOn: false,
         ),
       );
-    case 'messaging':
-      await context.push(
-        AppPaths.chatDetail,
-        extra: ChatModel(
-          id: 'chat-${appointment.documentId}',
-          patientId: '',
-          doctorId: appointment.doctorId ?? appointment.documentId,
-          doctorName: appointment.doctorName,
-          doctorImage: appointment.doctorImageUrl ?? '',
-          doctorSpecialty: appointment.doctorSpecialty,
-          patientName: '',
-          patientImage: '',
-          lastMessage: 'Session ready — tap to open chat',
-          lastMessageTime: DateTime.now(),
-          unreadCount: 0,
-          appointmentId: appointment.documentId,
-          createdAt: DateTime.now(),
-          isOnline: true,
-        ),
-      );
     default:
       break;
   }
 }
 
+Future<void> _openChatForAppointment(
+  BuildContext context,
+  AppointmentModel appointment,
+) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null || !context.mounted) return;
+
+  final doctorId = appointment.doctorId?.trim() ?? '';
+  if (doctorId.isEmpty) return;
+
+  var patientName = appointment.patientName?.trim() ?? '';
+  var patientImage = '';
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = userDoc.data() ?? {};
+    patientName = patientName.isNotEmpty
+        ? patientName
+        : (data['name'] as String? ??
+            data['displayName'] as String? ??
+            user.displayName ??
+            'Patient');
+    patientImage = data['photoUrl'] as String? ?? '';
+  } catch (_) {
+    patientName = patientName.isNotEmpty
+        ? patientName
+        : (user.displayName ?? 'Patient');
+  }
+
+  final chatId = await AppDependencies.instance.chatRepository.createChat(
+    patientId: user.uid,
+    doctorId: doctorId,
+    doctorName: appointment.doctorName,
+    doctorImage: appointment.doctorImageUrl ?? '',
+    doctorSpecialty: appointment.doctorSpecialty,
+    patientName: patientName,
+    patientImage: patientImage,
+    appointmentId: appointment.documentId,
+  );
+
+  if (!context.mounted) return;
+
+  await context.push(
+    AppPaths.chatDetail,
+    extra: ChatModel(
+      id: chatId,
+      patientId: user.uid,
+      doctorId: doctorId,
+      doctorName: appointment.doctorName,
+      doctorImage: appointment.doctorImageUrl ?? '',
+      doctorSpecialty: appointment.doctorSpecialty,
+      patientName: patientName,
+      patientImage: patientImage,
+      lastMessage: '',
+      lastMessageTime: DateTime.now(),
+      unreadCount: 0,
+      appointmentId: appointment.documentId,
+      createdAt: DateTime.now(),
+      isOnline: true,
+    ),
+  );
+}
+
 void navigateGetDirection(BuildContext context, AppointmentModel appointment) {
   context.push(
-    AppPaths.appointmentGetDirection,
+    AppPaths.getDirection,
     extra: getDirectionArgsFromAppointment(appointment),
   );
 }
@@ -140,7 +193,8 @@ void navigateGetDirection(BuildContext context, AppointmentModel appointment) {
 void navigateScanQr(BuildContext context, AppointmentModel appointment) {
   context.push(
     AppPaths.appointmentEReceipt,
-    extra: eReceiptArgsFromAppointment(appointment),
+    extra: eReceiptArgsFromAppointment(appointment)
+        .copyWith(hospitalKioskFlow: true),
   );
 }
 

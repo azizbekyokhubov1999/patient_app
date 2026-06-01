@@ -177,7 +177,9 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.upcomingAppointments,
         builder: (context, state) => BlocProvider(
-          create: (_) => UpcomingAppointmentCubit()..loadUpcomingAppointments(),
+          create: (_) => UpcomingAppointmentCubit(
+            repository: AppDependencies.instance.homeRepository,
+          )..loadUpcomingAppointments(),
           child: const UpcomingAppointmentPage(),
         ),
       ),
@@ -202,7 +204,9 @@ abstract final class AppRouter {
       GoRoute(
         path: AppPaths.nearbyHospitals,
         builder: (context, state) => BlocProvider(
-          create: (_) => NearbyHospitalsCubit()..loadNearbyHospitals(),
+          create: (_) => NearbyHospitalsCubit(
+            repository: AppDependencies.instance.homeRepository,
+          )..loadNearbyHospitals(),
           child: const NearbyHospitalsPage(),
         ),
       ),

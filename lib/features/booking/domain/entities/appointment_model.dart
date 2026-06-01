@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import '../utils/appointment_time_helper.dart';
+
 /// Patient appointment document from Firestore `appointments` collection.
 class AppointmentModel {
   AppointmentModel({
@@ -29,6 +31,7 @@ class AppointmentModel {
     this.totalAmount = 20,
     this.createdAt,
     this.cancelledAt,
+    this.completedAt,
     String? type,
     this.sessionStatus = 'pending',
     this.hospitalAddress = '',
@@ -84,6 +87,7 @@ class AppointmentModel {
   final double totalAmount;
   final DateTime? createdAt;
   final DateTime? cancelledAt;
+  final DateTime? completedAt;
 
   /// `video`, `voice`, `messaging`, or `offline`.
   final String type;
@@ -96,22 +100,18 @@ class AppointmentModel {
 
   /// Combined date + [startTime] for time-based UI triggers.
   DateTime get appointmentTime =>
-      parseAppointmentDateTime(appointmentDate, startTime);
+      appointmentDateTimeFromDate(appointmentDate, startTime);
+
+  AppointmentTimeStatus get timeStatus =>
+      getTimeStatus(appointmentTime, packageType);
 
   bool get showJoinSession =>
-      type != 'offline' &&
-      sessionStatus == 'started_by_doctor' &&
-      DateTime.now().difference(appointmentTime).inMinutes.abs() <= 5;
+      timeStatus == AppointmentTimeStatus.joinSession;
 
   bool get showGetDirection =>
-      type == 'offline' &&
-      appointmentTime.difference(DateTime.now()).inHours <= 1 &&
-      sessionStatus == 'pending';
+      timeStatus == AppointmentTimeStatus.getDirection;
 
-  bool get showScanQR =>
-      type == 'offline' &&
-      appointmentTime.difference(DateTime.now()).inMinutes <= 5 &&
-      sessionStatus == 'pending';
+  bool get showScanQR => timeStatus == AppointmentTimeStatus.scanQr;
 
   bool get isSessionCompleted => sessionStatus == 'completed';
 
@@ -195,6 +195,7 @@ class AppointmentModel {
     double? totalAmount,
     DateTime? createdAt,
     DateTime? cancelledAt,
+    DateTime? completedAt,
     String? type,
     String? sessionStatus,
     String? hospitalAddress,
@@ -226,6 +227,7 @@ class AppointmentModel {
       totalAmount: totalAmount ?? this.totalAmount,
       createdAt: createdAt ?? this.createdAt,
       cancelledAt: cancelledAt ?? this.cancelledAt,
+      completedAt: completedAt ?? this.completedAt,
       type: type ?? this.type,
       sessionStatus: sessionStatus ?? this.sessionStatus,
       hospitalAddress: hospitalAddress ?? this.hospitalAddress,
@@ -273,6 +275,14 @@ class AppointmentModel {
       cancelledAt = cancelledRaw;
     }
 
+    DateTime? completedAt;
+    final completedRaw = data['completedAt'];
+    if (completedRaw is Timestamp) {
+      completedAt = completedRaw.toDate();
+    } else if (completedRaw is DateTime) {
+      completedAt = completedRaw;
+    }
+
     final ratingRaw = data['doctorRating'];
     var rating = 0.0;
     if (ratingRaw is num) {
@@ -314,6 +324,7 @@ class AppointmentModel {
       totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? packagePrice,
       createdAt: createdAt,
       cancelledAt: cancelledAt,
+      completedAt: completedAt,
       type: data['type'] as String?,
       sessionStatus: data['sessionStatus'] as String? ?? 'pending',
       hospitalAddress: data['hospitalAddress'] as String? ?? '',

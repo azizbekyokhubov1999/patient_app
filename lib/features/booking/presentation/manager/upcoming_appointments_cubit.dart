@@ -101,6 +101,28 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
   final FirebaseAuth _auth;
 
   StreamSubscription<List<AppointmentModel>>? _subscription;
+  Timer? _timeRefreshTimer;
+  final Set<String> _autoCompleteNotifiedIds = {};
+
+  void startTimeRefreshTimer() {
+    if (_timeRefreshTimer != null) return;
+    _timeRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      unawaited(_runAutoComplete());
+      _emitTimeRefreshTick();
+    });
+  }
+
+  void _emitTimeRefreshTick() {
+    final current = state;
+    if (current is! UpcomingAppointmentsLoaded) return;
+    emit(
+      UpcomingAppointmentsLoaded(
+        current.appointments,
+        appointmentPendingConsultationEnd:
+            current.appointmentPendingConsultationEnd,
+      ),
+    );
+  }
 
   void fetchUpcomingAppointments() {
     emit(const UpcomingAppointmentsLoading());
@@ -116,12 +138,68 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
       return;
     }
 
+    unawaited(_runAutoComplete());
+
     _subscription = _repository.getUpcomingAppointments().listen(
-      (appointments) => emit(UpcomingAppointmentsLoaded(appointments)),
+      (appointments) async {
+        await _runAutoComplete();
+        final current = state;
+        final pending = current is UpcomingAppointmentsLoaded
+            ? current.appointmentPendingConsultationEnd
+            : null;
+        emit(
+          UpcomingAppointmentsLoaded(
+            appointments,
+            appointmentPendingConsultationEnd: pending,
+          ),
+        );
+        startTimeRefreshTimer();
+      },
       onError: (Object e, StackTrace st) {
         emit(UpcomingAppointmentsError(e.toString()));
       },
     );
+  }
+
+  /// Returns appointment to show on [ConsultationEndedPage], if any were newly completed.
+  Future<AppointmentModel?> _runAutoComplete() async {
+    if (kPresentationMockAppointments || _auth.currentUser == null) {
+      return null;
+    }
+
+    try {
+      final completed = await _repository.autoCompleteExpiredAppointments();
+      if (completed.isEmpty) return null;
+
+      AppointmentModel? mostRecent;
+      for (final appointment in completed) {
+        if (_autoCompleteNotifiedIds.contains(appointment.documentId)) {
+          continue;
+        }
+        _autoCompleteNotifiedIds.add(appointment.documentId);
+        mostRecent = appointment;
+        break;
+      }
+
+      if (mostRecent != null) {
+        final current = state;
+        if (current is UpcomingAppointmentsLoaded) {
+          emit(
+            current.copyWith(appointmentPendingConsultationEnd: mostRecent),
+          );
+        }
+      }
+
+      return mostRecent;
+    } catch (e, st) {
+      developer.log(
+        'autoCompleteExpiredAppointments error',
+        error: e,
+        stackTrace: st,
+        name: 'UpcomingAppointmentsCubit',
+      );
+      return null;
+    }
   }
 
   void clearPendingConsultationEnd() {
@@ -259,6 +337,7 @@ class UpcomingAppointmentsCubit extends Cubit<UpcomingAppointmentsState> {
 
   @override
   Future<void> close() {
+    _timeRefreshTimer?.cancel();
     unawaited(_subscription?.cancel());
     return super.close();
   }

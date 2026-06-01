@@ -79,16 +79,36 @@ class AppointmentPreview {
       rating = ratingRaw.toDouble();
     }
 
+    final startTime =
+        data['startTime'] as String? ?? data['time'] as String? ?? '';
+    final endTime = data['endTime'] as String? ??
+        (startTime.isNotEmpty ? _endTimePlus30Minutes(startTime) : '');
+
     return AppointmentPreview(
       appointmentId: doc.id,
       doctorName: data['doctorName'] as String? ?? '',
       doctorSpecialty: data['doctorSpecialty'] as String? ?? '',
       doctorRating: rating,
-      doctorImageUrl: data['doctorImageUrl'] as String?,
+      doctorImageUrl: data['doctorImageUrl'] as String? ??
+          data['doctorImage'] as String?,
       appointmentDate: appointmentDate,
-      startTime: data['startTime'] as String? ?? '',
-      endTime: data['endTime'] as String? ?? '',
+      startTime: startTime,
+      endTime: endTime,
       status: data['status'] as String? ?? 'confirmed',
     );
+  }
+
+  static String _endTimePlus30Minutes(String startTime) {
+    final parts = startTime.split(':');
+    if (parts.length < 2) return startTime;
+
+    final hour = int.tryParse(parts[0].trim());
+    final minute = int.tryParse(parts[1].trim());
+    if (hour == null || minute == null) return startTime;
+
+    final totalMinutes = hour * 60 + minute + 30;
+    final endHour = (totalMinutes ~/ 60) % 24;
+    final endMinute = totalMinutes % 60;
+    return '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
   }
 }

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/entities/appointment_model.dart';
 import '../../domain/entities/time_slot.dart';
+import '../../domain/utils/appointment_time_helper.dart';
 
 abstract class BookingRemoteDataSource {
   Future<List<TimeSlot>> fetchAvailableSlots({
@@ -22,6 +23,10 @@ abstract class BookingRemoteDataSource {
   Stream<List<AppointmentModel>> getCancelledAppointments(String uid);
 
   Future<void> cancelAppointment(String appointmentId);
+
+  /// Marks confirmed appointments as completed when end time has passed.
+  /// Returns models that were updated (for consultation-ended navigation).
+  Future<List<AppointmentModel>> autoCompleteExpiredAppointments(String uid);
 }
 
 class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
@@ -268,6 +273,62 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
     listen();
     controller.onCancel = () => subscription?.cancel();
     return controller.stream;
+  }
+
+  @override
+  Future<List<AppointmentModel>> autoCompleteExpiredAppointments(
+    String uid,
+  ) async {
+    final trimmedUid = uid.trim();
+    if (trimmedUid.isEmpty) return const [];
+
+    final snapshot = await _firestore
+        .collection('appointments')
+        .where('patientId', isEqualTo: trimmedUid)
+        .where('status', isEqualTo: 'confirmed')
+        .get();
+
+    final now = DateTime.now();
+    final batch = _firestore.batch();
+    final completed = <AppointmentModel>[];
+    var batchCount = 0;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final dateRaw = data['date'] ?? data['appointmentDate'];
+      if (dateRaw is! Timestamp) continue;
+
+      final time =
+          data['time'] as String? ?? data['startTime'] as String? ?? '';
+      final appointmentDateTime = appointmentDateTimeFromDate(
+        dateRaw.toDate(),
+        time,
+      );
+      final appointmentEndTime =
+          appointmentDateTime.add(const Duration(minutes: 30));
+
+      if (!appointmentEndTime.isBefore(now)) continue;
+
+      batch.update(doc.reference, {
+        'status': 'completed',
+        'completedAt': FieldValue.serverTimestamp(),
+      });
+      batchCount++;
+
+      completed.add(
+        AppointmentModel.fromFirestoreMap(data, doc.id).copyWith(
+          status: 'completed',
+          sessionStatus: 'completed',
+          completedAt: now,
+        ),
+      );
+    }
+
+    if (batchCount == 0) return const [];
+
+    await batch.commit();
+    completed.sort((a, b) => b.appointmentTime.compareTo(a.appointmentTime));
+    return completed;
   }
 
   @override

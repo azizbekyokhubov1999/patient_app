@@ -14,6 +14,7 @@ import '../../domain/entities/doctor.dart';
 import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
 import '../../domain/entities/service_category.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../models/filter_args.dart';
 import '../manager/home_cubit.dart';
 import '../manager/home_state.dart';
@@ -45,7 +46,9 @@ class _HomePageState extends State<HomePage> {
     final textTheme = Theme.of(context).textTheme;
 
     return BlocProvider(
-      create: (_) => HomeCubit(),
+      create: (_) => HomeCubit(
+        repository: AppDependencies.instance.homeRepository,
+      )..loadHomeData(),
       child: BlocBuilder<HomeCubit, HomeState>(
         builder: (context, state) {
           return Scaffold(
@@ -62,28 +65,42 @@ class _HomePageState extends State<HomePage> {
                         onTapSeeAll: () => context.push(AppPaths.upcomingAppointments),
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        height: 170,
-                        child: PageView.builder(
-                          controller: _appointmentController,
-                          itemCount: state.appointments.length,
-                          onPageChanged: context
-                              .read<HomeCubit>()
-                              .updateCurrentAppointment,
-                          itemBuilder: (context, index) {
-                            final appointment = state.appointments[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 10),
-                              child: _AppointmentCard(appointment: appointment),
-                            );
-                          },
+                      if (state.isLoading && state.appointments.isEmpty)
+                        const SizedBox(
+                          height: 170,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (state.appointments.isEmpty)
+                        const SizedBox(
+                          height: 170,
+                          child: _NoUpcomingAppointmentsCard(),
+                        )
+                      else
+                        SizedBox(
+                          height: 170,
+                          child: PageView.builder(
+                            controller: _appointmentController,
+                            itemCount: state.appointments.length,
+                            onPageChanged: context
+                                .read<HomeCubit>()
+                                .updateCurrentAppointment,
+                            itemBuilder: (context, index) {
+                              final appointment = state.appointments[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child:
+                                    _AppointmentCard(appointment: appointment),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _DotIndicators(
-                        count: state.appointments.length,
-                        currentIndex: state.currentAppointmentIndex,
-                      ),
+                      if (state.appointments.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _DotIndicators(
+                          count: state.appointments.length,
+                          currentIndex: state.currentAppointmentIndex,
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       _SectionTitle(
                         title: 'Services',
@@ -421,6 +438,59 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+class _NoUpcomingAppointmentsCard extends StatelessWidget {
+  const _NoUpcomingAppointmentsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'No upcoming appointments',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.secondaryText,
+              fontWeight: FontWeight.w500,
+            ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class _DoctorImage extends StatelessWidget {
+  const _DoctorImage({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
+    if (url.isEmpty) {
+      return const Icon(
+        LucideIcons.userRound,
+        color: AppColors.secondaryText,
+        size: 34,
+      );
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const Icon(
+        LucideIcons.userRound,
+        color: AppColors.secondaryText,
+        size: 34,
+      ),
+    );
+  }
+}
+
 class _AppointmentCard extends StatelessWidget {
   const _AppointmentCard({required this.appointment});
 
@@ -452,10 +522,9 @@ class _AppointmentCard extends StatelessWidget {
                         color: AppColors.stroke,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        LucideIcons.userRound,
-                        color: AppColors.secondaryText,
-                        size: 34,
+                      clipBehavior: Clip.antiAlias,
+                      child: _DoctorImage(
+                        imageUrl: appointment.doctorImageUrl,
                       ),
                     ),
                     const SizedBox(width: 12),

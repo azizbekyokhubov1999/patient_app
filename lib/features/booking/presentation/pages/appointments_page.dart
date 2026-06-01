@@ -136,8 +136,19 @@ class AppointmentsPage extends StatelessWidget {
   }
 }
 
-class _UpcomingTab extends StatelessWidget {
+class _UpcomingTab extends StatefulWidget {
   const _UpcomingTab();
+
+  @override
+  State<_UpcomingTab> createState() => _UpcomingTabState();
+}
+
+class _UpcomingTabState extends State<_UpcomingTab> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<UpcomingAppointmentsCubit>().startTimeRefreshTimer();
+  }
 
   Future<void> _confirmCancel(
     BuildContext context,
@@ -252,18 +263,7 @@ class _UpcomingTab extends StatelessWidget {
                           extra: _doctorFrom(appointment),
                         ),
                         onJoinSession: appointment.showJoinSession
-                            ? () async {
-                                await navigateJoinSession(
-                                  context,
-                                  appointment,
-                                );
-                                if (!context.mounted) return;
-                                context
-                                    .read<UpcomingAppointmentsCubit>()
-                                    .completeAppointment(
-                                      appointment.documentId,
-                                    );
-                              }
+                            ? () => navigateJoinSession(context, appointment)
                             : null,
                         onGetDirection: appointment.showGetDirection
                             ? () => navigateGetDirection(context, appointment)
@@ -271,14 +271,6 @@ class _UpcomingTab extends StatelessWidget {
                         onScanQr: appointment.showScanQR
                             ? () => navigateScanQr(context, appointment)
                             : null,
-                        onSimulateDoctorComplete:
-                            appointment.showJoinSession
-                                ? () => context
-                                    .read<UpcomingAppointmentsCubit>()
-                                    .completeAppointment(
-                                      appointment.documentId,
-                                    )
-                                : null,
                       );
                     },
                   ),

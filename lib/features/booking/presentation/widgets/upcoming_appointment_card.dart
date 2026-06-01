@@ -1,12 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/appointment_model.dart';
+import '../../domain/utils/appointment_time_helper.dart';
 
-class UpcomingAppointmentCard extends StatefulWidget {
+class UpcomingAppointmentCard extends StatelessWidget {
   const UpcomingAppointmentCard({
     required this.appointment,
     required this.onCancel,
@@ -16,7 +15,6 @@ class UpcomingAppointmentCard extends StatefulWidget {
     this.onJoinSession,
     this.onGetDirection,
     this.onScanQr,
-    this.onSimulateDoctorComplete,
     super.key,
   });
 
@@ -28,41 +26,21 @@ class UpcomingAppointmentCard extends StatefulWidget {
   final VoidCallback? onJoinSession;
   final VoidCallback? onGetDirection;
   final VoidCallback? onScanQr;
-  final VoidCallback? onSimulateDoctorComplete;
-
-  @override
-  State<UpcomingAppointmentCard> createState() => _UpcomingAppointmentCardState();
-}
-
-class _UpcomingAppointmentCardState extends State<UpcomingAppointmentCard> {
-  Timer? _tickTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _tickTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tickTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final timeStatus = appointment.timeStatus;
+
     return _UpcomingAppointmentCardBody(
-      appointment: widget.appointment,
-      onCancel: widget.onCancel,
-      onViewReceipt: widget.onViewReceipt,
-      onToggleReminder: widget.onToggleReminder,
-      onDoctorTap: widget.onDoctorTap,
-      onJoinSession: widget.onJoinSession,
-      onGetDirection: widget.onGetDirection,
-      onScanQr: widget.onScanQr,
-      onSimulateDoctorComplete: widget.onSimulateDoctorComplete,
+      appointment: appointment,
+      timeStatus: timeStatus,
+      onCancel: onCancel,
+      onViewReceipt: onViewReceipt,
+      onToggleReminder: onToggleReminder,
+      onDoctorTap: onDoctorTap,
+      onJoinSession: onJoinSession,
+      onGetDirection: onGetDirection,
+      onScanQr: onScanQr,
     );
   }
 }
@@ -70,6 +48,7 @@ class _UpcomingAppointmentCardState extends State<UpcomingAppointmentCard> {
 class _UpcomingAppointmentCardBody extends StatelessWidget {
   const _UpcomingAppointmentCardBody({
     required this.appointment,
+    required this.timeStatus,
     required this.onCancel,
     required this.onViewReceipt,
     required this.onToggleReminder,
@@ -77,10 +56,10 @@ class _UpcomingAppointmentCardBody extends StatelessWidget {
     this.onJoinSession,
     this.onGetDirection,
     this.onScanQr,
-    this.onSimulateDoctorComplete,
   });
 
   final AppointmentModel appointment;
+  final AppointmentTimeStatus timeStatus;
   final VoidCallback onCancel;
   final VoidCallback onViewReceipt;
   final ValueChanged<bool> onToggleReminder;
@@ -88,7 +67,6 @@ class _UpcomingAppointmentCardBody extends StatelessWidget {
   final VoidCallback? onJoinSession;
   final VoidCallback? onGetDirection;
   final VoidCallback? onScanQr;
-  final VoidCallback? onSimulateDoctorComplete;
 
   static const Color _badgeBg = Color(0xFFFFF4E5);
   static const Color _badgeText = Color(0xFFE67E22);
@@ -98,10 +76,6 @@ class _UpcomingAppointmentCardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showJoin = appointment.showJoinSession;
-    final showDirection = appointment.showGetDirection;
-    final showScan = appointment.showScanQR;
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -253,90 +227,14 @@ class _UpcomingAppointmentCardBody extends StatelessWidget {
                 ),
               ],
             ),
-            if (showJoin || showDirection || showScan) ...[
+            if (timeStatus != AppointmentTimeStatus.normal) ...[
               const SizedBox(height: 16),
-              if (showJoin)
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: onJoinSession,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Join or Start Session',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              if (showDirection) ...[
-                if (showJoin) const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: onGetDirection,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Get Direction',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (showScan) ...[
-                if (showJoin || showDirection) const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: onScanQr,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Scan QR',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (showJoin && onSimulateDoctorComplete != null) ...[
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: onSimulateDoctorComplete,
-                  child: const Text(
-                    'Demo: Simulate doctor completing session',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
+              _TimeActionButton(
+                timeStatus: timeStatus,
+                onJoinSession: onJoinSession,
+                onGetDirection: onGetDirection,
+                onScanQr: onScanQr,
+              ),
             ],
             const SizedBox(height: 16),
             Row(
@@ -386,6 +284,63 @@ class _UpcomingAppointmentCardBody extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeActionButton extends StatelessWidget {
+  const _TimeActionButton({
+    required this.timeStatus,
+    this.onJoinSession,
+    this.onGetDirection,
+    this.onScanQr,
+  });
+
+  final AppointmentTimeStatus timeStatus;
+  final VoidCallback? onJoinSession;
+  final VoidCallback? onGetDirection;
+  final VoidCallback? onScanQr;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label;
+    final VoidCallback? onPressed;
+
+    switch (timeStatus) {
+      case AppointmentTimeStatus.joinSession:
+        label = 'Join Session';
+        onPressed = onJoinSession;
+      case AppointmentTimeStatus.getDirection:
+        label = 'Get Direction';
+        onPressed = onGetDirection;
+      case AppointmentTimeStatus.scanQr:
+        label = 'Scan QR';
+        onPressed = onScanQr;
+      case AppointmentTimeStatus.normal:
+        return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
