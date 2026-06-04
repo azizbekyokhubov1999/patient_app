@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../home/domain/entities/hospital.dart';
 import '../../domain/repositories/explore_repository.dart';
 import 'explore_state.dart';
 
@@ -18,15 +19,17 @@ class ExploreCubit extends Cubit<ExploreState> {
       );
 
   final ExploreRepository _repository;
+  List<Hospital> _allHospitals = [];
 
   Future<void> load() async {
     final (userLat, userLng) = await _resolveUserLocation();
 
     try {
       final hospitals = await _repository.getNearbyHospitals();
+      _allHospitals = hospitals;
       emit(
         state.copyWith(
-          hospitals: hospitals,
+          hospitals: _filterByQuery(_allHospitals, state.searchQuery),
           userLatitude: userLat,
           userLongitude: userLng,
           selectedHospitalIndex: 0,
@@ -34,6 +37,7 @@ class ExploreCubit extends Cubit<ExploreState> {
         ),
       );
     } catch (_) {
+      _allHospitals = const [];
       emit(
         state.copyWith(
           hospitals: const [],
@@ -44,6 +48,33 @@ class ExploreCubit extends Cubit<ExploreState> {
         ),
       );
     }
+  }
+
+  void filterByQuery(String query) {
+    final filtered = _filterByQuery(_allHospitals, query);
+    emit(
+      state.copyWith(
+        searchQuery: query,
+        hospitals: filtered,
+        selectedHospitalIndex: 0,
+      ),
+    );
+  }
+
+  static List<Hospital> _filterByQuery(List<Hospital> hospitals, String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return List<Hospital>.from(hospitals);
+    }
+
+    final lower = trimmed.toLowerCase();
+    return hospitals
+        .where(
+          (h) =>
+              h.name.toLowerCase().contains(lower) ||
+              h.tags.toLowerCase().contains(lower),
+        )
+        .toList();
   }
 
   Future<(double, double)> _resolveUserLocation() async {

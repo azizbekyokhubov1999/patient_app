@@ -28,6 +28,9 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   }
 
   @override
+  Future<List<Doctor>> getAllDoctors() => _remote.getAllDoctors();
+
+  @override
   Future<List<Doctor>> getFavoriteDoctors() {
     return _remote.getFavoriteDoctors();
   }
@@ -48,6 +51,17 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
     double currentLng = 0,
   }) {
     return _remote.getFavoriteHospitals(
+      currentLat: currentLat,
+      currentLng: currentLng,
+    );
+  }
+
+  @override
+  Stream<List<Hospital>> watchFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  }) {
+    return _remote.watchFavoriteHospitals(
       currentLat: currentLat,
       currentLng: currentLng,
     );

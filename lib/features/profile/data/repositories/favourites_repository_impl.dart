@@ -31,12 +31,9 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
     double currentLat = 0,
     double currentLng = 0,
   }) {
-    // Hospitals: one-shot refresh on doctor stream updates (no hospital snapshot yet).
-    return watchFavoriteDoctors().asyncMap((_) async {
-      return _doctorsRepository.getFavoriteHospitals(
-        currentLat: currentLat,
-        currentLng: currentLng,
-      );
-    });
+    return _doctorsRepository.watchFavoriteHospitals(
+      currentLat: currentLat,
+      currentLng: currentLng,
+    );
   }
 }

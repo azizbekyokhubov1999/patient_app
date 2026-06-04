@@ -4,7 +4,9 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class FavouritesEmptyView extends StatelessWidget {
-  const FavouritesEmptyView({super.key});
+  const FavouritesEmptyView({this.message = 'No favourites yet', super.key});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +22,8 @@ class FavouritesEmptyView extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.35),
             ),
             const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'No favourites yet',
+            Text(
+              message,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,

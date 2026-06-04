@@ -14,11 +14,18 @@ abstract class DoctorRemoteDataSource {
 
   Future<List<Doctor>> getTopDoctors({String? specialty, int limit = 30});
 
+  Future<List<Doctor>> getAllDoctors();
+
   Future<List<Doctor>> getFavoriteDoctors();
 
   Stream<List<Doctor>> watchFavoriteDoctors();
 
   Future<List<Hospital>> getFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  });
+
+  Stream<List<Hospital>> watchFavoriteHospitals({
     double currentLat = 0,
     double currentLng = 0,
   });
@@ -179,6 +186,22 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
   }
 
   @override
+  Future<List<Doctor>> getAllDoctors() async {
+    try {
+      final snapshot = await _firestore
+          .collection('doctors')
+          .orderBy('rating', descending: true)
+          .get();
+      return _mapDoctorDocs(snapshot.docs);
+    } on FirebaseException {
+      final snapshot = await _firestore.collection('doctors').get();
+      final doctors = _mapDoctorDocs(snapshot.docs)
+        ..sort((a, b) => b.rating.compareTo(a.rating));
+      return doctors;
+    }
+  }
+
+  @override
   Future<List<Doctor>> getFavoriteDoctors() async {
     try {
       final snapshot = await _firestore
@@ -284,17 +307,67 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
   }
 
   @override
+  Stream<List<Hospital>> watchFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  }) {
+    final controller = StreamController<List<Hospital>>.broadcast();
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? subscription;
+    var useFavoriteQuery = true;
+
+    void listen() {
+      subscription?.cancel();
+      final query = useFavoriteQuery
+          ? _firestore
+              .collection('hospitals')
+              .where('isFavorite', isEqualTo: true)
+          : _firestore.collection('hospitals');
+
+      subscription = query.snapshots().listen(
+        (snapshot) {
+          final hospitals = _mapHospitalDocs(
+            snapshot.docs,
+            currentLat,
+            currentLng,
+          );
+          controller.add(
+            useFavoriteQuery
+                ? hospitals
+                : hospitals.where((hospital) => hospital.isFavorite).toList(),
+          );
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (useFavoriteQuery) {
+            useFavoriteQuery = false;
+            listen();
+            return;
+          }
+          controller.addError(error, stackTrace);
+        },
+      );
+    }
+
+    listen();
+    controller.onCancel = () => subscription?.cancel();
+    return controller.stream;
+  }
+
+  @override
   Future<void> setHospitalFavorite({
     required String hospitalId,
     required bool isFavorite,
   }) async {
-    await _firestore.collection('hospitals').doc(hospitalId).set(
-      {
-        'isFavorite': isFavorite,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    final trimmedId = hospitalId.trim();
+    if (trimmedId.isEmpty) {
+      throw ArgumentError(
+        'hospitalId must be a non-empty Firestore document id',
+      );
+    }
+
+    await _firestore.collection('hospitals').doc(trimmedId).update({
+      'isFavorite': isFavorite,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   List<Doctor> _mapDoctorDocs(

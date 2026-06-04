@@ -9,6 +9,8 @@ abstract class DoctorsRepository {
 
   Future<List<Doctor>> getTopDoctors({String? specialty, int limit = 30});
 
+  Future<List<Doctor>> getAllDoctors();
+
   Future<List<Doctor>> getFavoriteDoctors();
 
   Stream<List<Doctor>> watchFavoriteDoctors();
@@ -16,6 +18,11 @@ abstract class DoctorsRepository {
   Stream<bool> watchDoctorFavorite(String doctorId);
 
   Future<List<Hospital>> getFavoriteHospitals({
+    double currentLat = 0,
+    double currentLng = 0,
+  });
+
+  Stream<List<Hospital>> watchFavoriteHospitals({
     double currentLat = 0,
     double currentLng = 0,
   });

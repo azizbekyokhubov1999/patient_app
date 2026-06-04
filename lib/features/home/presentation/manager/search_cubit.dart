@@ -3,20 +3,29 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/datasources/search_local_data_source.dart';
-import '../../data/search_catalog.dart';
 import '../../domain/entities/doctor.dart';
+import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
+import '../../domain/repositories/search_repository.dart';
+import '../utils/home_filter_utils.dart';
 import 'search_state.dart';
 
 class SearchCubit extends Cubit<SearchState> {
   SearchCubit({
+    required SearchRepository repository,
     SearchLocalDataSource? localDataSource,
-  })  : _localDataSource = localDataSource ?? SearchLocalDataSource(),
+    FilterResult? initialFilter,
+  })  : _repository = repository,
+        _localDataSource = localDataSource ?? SearchLocalDataSource(),
+        _pendingFilter = initialFilter,
         super(const SearchState());
 
+  final SearchRepository _repository;
   final SearchLocalDataSource _localDataSource;
+  FilterResult? _pendingFilter;
+  FilterResult? _activeFilter;
 
-  List<Doctor> _allDoctors = SearchCatalog.doctors;
+  List<Doctor> _allDoctors = [];
   List<Hospital> _allHospitals = [];
 
   Timer? _debounce;
@@ -31,31 +40,71 @@ class SearchCubit extends Cubit<SearchState> {
     emit(state.copyWith(isLoading: true));
 
     try {
-      _allHospitals = await SearchCatalog.loadAllHospitals();
-      final stored = await _localDataSource.loadKeywords();
-      final keywords =
-          stored.isEmpty ? SearchCatalog.defaultRecentKeywords : stored;
+      final results = await Future.wait([
+        _repository.getAllDoctors(),
+        _repository.getAllHospitals(),
+        _localDataSource.loadKeywords(),
+      ]);
+
+      _allDoctors = results[0] as List<Doctor>;
+      _allHospitals = results[1] as List<Hospital>;
+      final stored = results[2] as List<String>;
+
+      final keywords = stored.isEmpty
+          ? const ['Dental Care', 'Eye Care', 'Dentist']
+          : stored;
 
       emit(
         state.copyWith(
           recentKeywords: keywords,
-          recentDoctors: SearchCatalog.defaultRecentDoctors,
+          recentDoctors: _allDoctors.take(3).toList(),
           recentHospitals: _allHospitals.take(3).toList(),
           isLoading: false,
           isInitialized: true,
         ),
       );
+
+      final filter = _pendingFilter;
+      _pendingFilter = null;
+      if (filter != null) {
+        applyFilters(filter);
+      }
     } catch (_) {
       emit(
         state.copyWith(
-          recentKeywords: SearchCatalog.defaultRecentKeywords,
-          recentDoctors: SearchCatalog.defaultRecentDoctors,
-          recentHospitals: SearchCatalog.homeHospitals.take(3).toList(),
+          recentKeywords: const ['Dental Care', 'Eye Care', 'Dentist'],
+          recentDoctors: const [],
+          recentHospitals: const [],
           isLoading: false,
           isInitialized: true,
+          searchedDoctors: const [],
+          searchedHospitals: const [],
         ),
       );
     }
+  }
+
+  void applyFilters(FilterResult filter) {
+    if (!_hasCatalog) return;
+
+    _activeFilter = filter;
+    final doctors = filterDoctors(_allDoctors, filter);
+    final hospitals = filterHospitals(_allHospitals, filter);
+
+    final query = state.query.trim();
+    if (query.isEmpty) {
+      emit(
+        state.copyWith(
+          isSearching: true,
+          isLoading: false,
+          searchedDoctors: doctors,
+          searchedHospitals: hospitals,
+        ),
+      );
+      return;
+    }
+
+    _emitSearchResults(query, doctors, hospitals);
   }
 
   void onQueryChanged(String query) {
@@ -65,6 +114,10 @@ class SearchCubit extends Cubit<SearchState> {
     _debounce?.cancel();
 
     if (trimmed.isEmpty) {
+      if (_activeFilter != null) {
+        applyFilters(_activeFilter!);
+        return;
+      }
       emit(
         state.copyWith(
           isSearching: false,
@@ -84,14 +137,41 @@ class SearchCubit extends Cubit<SearchState> {
   }
 
   void _runSearch(String query) {
+    if (!_hasCatalog) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          isSearching: true,
+          searchedDoctors: const [],
+          searchedHospitals: const [],
+        ),
+      );
+      return;
+    }
+
+    var doctors = _allDoctors;
+    var hospitals = _allHospitals;
+    if (_activeFilter != null) {
+      doctors = filterDoctors(_allDoctors, _activeFilter!);
+      hospitals = filterHospitals(_allHospitals, _activeFilter!);
+    }
+
+    _emitSearchResults(query, doctors, hospitals);
+  }
+
+  void _emitSearchResults(
+    String query,
+    List<Doctor> doctors,
+    List<Hospital> hospitals,
+  ) {
     final lower = query.toLowerCase();
 
-    final doctors = _allDoctors.where((d) {
+    final matchedDoctors = doctors.where((d) {
       return d.name.toLowerCase().contains(lower) ||
           d.specialty.toLowerCase().contains(lower);
     }).toList();
 
-    final hospitals = _allHospitals.where((h) {
+    final matchedHospitals = hospitals.where((h) {
       return h.name.toLowerCase().contains(lower) ||
           h.tags.toLowerCase().contains(lower) ||
           h.address.toLowerCase().contains(lower);
@@ -101,11 +181,14 @@ class SearchCubit extends Cubit<SearchState> {
       state.copyWith(
         isLoading: false,
         isSearching: true,
-        searchedDoctors: doctors,
-        searchedHospitals: hospitals,
+        searchedDoctors: matchedDoctors,
+        searchedHospitals: matchedHospitals,
       ),
     );
   }
+
+  bool get _hasCatalog =>
+      _allDoctors.isNotEmpty || _allHospitals.isNotEmpty;
 
   Future<void> addKeyword(String keyword) async {
     final value = keyword.trim();

@@ -120,11 +120,21 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
 
     return BlocConsumer<ExploreCubit, ExploreState>(
       listenWhen: (prev, curr) =>
-          prev.hospitals.length != curr.hospitals.length,
+          prev.hospitals.length != curr.hospitals.length ||
+          prev.searchQuery != curr.searchQuery,
       listener: (context, state) {
         if (state.hospitals.isNotEmpty && !_didInitialFit) {
           _didInitialFit = true;
           _fitMapToAll(state);
+        }
+        if (_pageController.hasClients && state.hospitals.isNotEmpty) {
+          final index = state.selectedHospitalIndex.clamp(
+            0,
+            state.hospitals.length - 1,
+          );
+          if ((_pageController.page?.round() ?? 0) != index) {
+            _pageController.jumpToPage(index);
+          }
         }
       },
       builder: (context, state) {
@@ -143,7 +153,8 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
                 right: 20,
                 top: topPad + 12,
                 child: _ExploreSearchBar(
-                  onFilterTap: () => debugPrint('Explore filter'),
+                  onQueryChanged:
+                      context.read<ExploreCubit>().filterByQuery,
                 ),
               ),
               Positioned(
@@ -339,9 +350,9 @@ class _UserLocationMarker extends StatelessWidget {
 }
 
 class _ExploreSearchBar extends StatelessWidget {
-  const _ExploreSearchBar({required this.onFilterTap});
+  const _ExploreSearchBar({required this.onQueryChanged});
 
-  final VoidCallback onFilterTap;
+  final ValueChanged<String> onQueryChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -351,8 +362,7 @@ class _ExploreSearchBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       color: AppColors.white,
       child: TextField(
-        readOnly: true,
-        onTap: () => debugPrint('Explore search'),
+        onChanged: onQueryChanged,
         decoration: InputDecoration(
           hintText: 'Search Doctor or Hospital',
           hintStyle: Theme.of(
@@ -362,14 +372,6 @@ class _ExploreSearchBar extends StatelessWidget {
             LucideIcons.search,
             color: AppColors.secondaryText,
             size: 22,
-          ),
-          suffixIcon: IconButton(
-            onPressed: onFilterTap,
-            icon: const Icon(
-              LucideIcons.slidersHorizontal,
-              color: AppColors.primaryText,
-              size: 22,
-            ),
           ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),

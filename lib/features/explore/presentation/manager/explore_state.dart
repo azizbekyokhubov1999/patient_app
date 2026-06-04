@@ -6,6 +6,7 @@ class ExploreState {
     required this.userLatitude,
     required this.userLongitude,
     required this.selectedHospitalIndex,
+    this.searchQuery = '',
     this.errorMessage,
   });
 
@@ -17,6 +18,7 @@ class ExploreState {
   final double userLatitude;
   final double userLongitude;
   final int selectedHospitalIndex;
+  final String searchQuery;
   final String? errorMessage;
 
   Hospital? get selectedHospital {
@@ -30,6 +32,7 @@ class ExploreState {
     double? userLatitude,
     double? userLongitude,
     int? selectedHospitalIndex,
+    String? searchQuery,
     Object? errorMessage = _sentinel,
   }) {
     return ExploreState(
@@ -38,6 +41,7 @@ class ExploreState {
       userLongitude: userLongitude ?? this.userLongitude,
       selectedHospitalIndex:
           selectedHospitalIndex ?? this.selectedHospitalIndex,
+      searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: identical(errorMessage, _sentinel)
           ? this.errorMessage
           : errorMessage as String?,

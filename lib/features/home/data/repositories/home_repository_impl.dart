@@ -13,6 +13,9 @@ class HomeRepositoryImpl implements HomeRepository {
   Future<List<Doctor>> getTopDoctors() => _remote.getTopDoctors();
 
   @override
+  Future<List<Doctor>> getAllDoctors() => _remote.getAllDoctors();
+
+  @override
   Future<List<Hospital>> getNearbyHospitals() => _remote.getNearbyHospitals();
 
   @override

@@ -36,14 +36,18 @@ class HomeCubit extends Cubit<HomeState> {
       final results = await Future.wait<dynamic>([
         _repository.getTopDoctors(),
         _repository.getNearbyHospitals(),
+        _repository.getAllDoctors(),
+        _repository.getAllHospitals(),
         uid != null
             ? _repository.getUpcomingAppointments(uid)
             : Future<List<AppointmentPreview>>.value(const []),
       ]);
 
-      _allDoctors = results[0] as List<Doctor>;
-      _allHospitals = results[1] as List<Hospital>;
-      final previews = results[2] as List<AppointmentPreview>;
+      final topDoctors = results[0] as List<Doctor>;
+      final nearbyHospitals = results[1] as List<Hospital>;
+      _allDoctors = results[2] as List<Doctor>;
+      _allHospitals = results[3] as List<Hospital>;
+      final previews = results[4] as List<AppointmentPreview>;
 
       final filter = state.activeFilter;
       emit(
@@ -52,10 +56,10 @@ class HomeCubit extends Cubit<HomeState> {
           appointments: previews.map(_toHomeAppointment).toList(),
           doctors: filter != null
               ? filterDoctors(_allDoctors, filter)
-              : List<Doctor>.from(_allDoctors),
+              : List<Doctor>.from(topDoctors),
           hospitals: filter != null
               ? filterHospitals(_allHospitals, filter)
-              : List<Hospital>.from(_allHospitals),
+              : List<Hospital>.from(nearbyHospitals),
           errorMessage: null,
         ),
       );

@@ -1,44 +1,26 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/hospital.dart';
+import '../../domain/repositories/doctors_repository.dart';
 import '../../domain/repositories/home_repository.dart';
 import 'nearby_hospitals_state.dart';
 
 class NearbyHospitalsCubit extends Cubit<NearbyHospitalsState> {
   NearbyHospitalsCubit({
     required HomeRepository repository,
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
+    required DoctorsRepository doctorsRepository,
   })  : _repository = repository,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance,
+        _doctorsRepository = doctorsRepository,
         super(const NearbyHospitalsInitial());
 
   final HomeRepository _repository;
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final DoctorsRepository _doctorsRepository;
 
   Future<void> loadNearbyHospitals() async {
     emit(const NearbyHospitalsLoading());
 
     try {
-      final uid = _auth.currentUser?.uid;
-      final favoriteIds =
-          uid != null ? await _loadFavoriteIds(uid) : <String>{};
-
-      var list = await _repository.getAllHospitals();
-
-      if (favoriteIds.isNotEmpty) {
-        list = list
-            .map(
-              (h) => favoriteIds.contains(h.id)
-                  ? h.copyWith(isFavorite: true)
-                  : h,
-            )
-            .toList(growable: false);
-      }
+      final list = await _repository.getAllHospitals();
 
       if (list.isEmpty) {
         emit(const NearbyHospitalsEmpty());
@@ -53,15 +35,6 @@ class NearbyHospitalsCubit extends Cubit<NearbyHospitalsState> {
     } catch (e) {
       emit(NearbyHospitalsError(e.toString()));
     }
-  }
-
-  Future<Set<String>> _loadFavoriteIds(String uid) async {
-    final snap = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('favorites')
-        .get();
-    return snap.docs.map((d) => d.id).toSet();
   }
 
   Future<void> refresh() => loadNearbyHospitals();
@@ -80,26 +53,8 @@ class NearbyHospitalsCubit extends Cubit<NearbyHospitalsState> {
     if (hospital == null) return;
 
     final nextFavorite = !hospital.isFavorite;
-    final uid = _auth.currentUser?.uid;
 
-    if (uid != null) {
-      final doc = _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('favorites')
-          .doc(hospitalId);
-      try {
-        if (nextFavorite) {
-          await doc.set({'hospitalId': hospitalId});
-        } else {
-          await doc.delete();
-        }
-      } catch (_) {
-        return;
-      }
-    }
-
-    List<Hospital> mapIds(List<Hospital> source) {
+    List<Hospital> mapFavorite(List<Hospital> source) {
       return source
           .map(
             (h) =>
@@ -108,12 +63,20 @@ class NearbyHospitalsCubit extends Cubit<NearbyHospitalsState> {
           .toList();
     }
 
-    emit(
-      NearbyHospitalsLoaded(
-        hospitals: mapIds(current.hospitals),
-        filteredHospitals: mapIds(current.filteredHospitals),
-      ),
+    final optimistic = NearbyHospitalsLoaded(
+      hospitals: mapFavorite(current.hospitals),
+      filteredHospitals: mapFavorite(current.filteredHospitals),
     );
+    emit(optimistic);
+
+    try {
+      await _doctorsRepository.toggleHospitalFavorite(
+        hospitalId: hospitalId,
+        isFavorite: nextFavorite,
+      );
+    } catch (_) {
+      emit(current);
+    }
   }
 
   void filterByQuery(String query) {

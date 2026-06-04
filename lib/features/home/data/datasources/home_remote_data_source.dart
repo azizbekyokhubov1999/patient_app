@@ -13,10 +13,13 @@ const double _kDefaultUserLng = -74.006;
 abstract class HomeRemoteDataSource {
   Future<List<Doctor>> getTopDoctors();
 
+  /// Full doctor list for home filter catalog.
+  Future<List<Doctor>> getAllDoctors();
+
   /// Home carousel — top hospitals preview (limit 4).
   Future<List<Hospital>> getNearbyHospitals();
 
-  /// Nearby hospitals "See All" — full list ordered by rating.
+  /// Full hospital list for search / filter catalogs.
   Future<List<Hospital>> getAllHospitals();
 
   /// Home carousel — next confirmed appointments (limit 3).
@@ -50,6 +53,22 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       if (doctors.length > limit) {
         return doctors.sublist(0, limit);
       }
+      return doctors;
+    }
+  }
+
+  @override
+  Future<List<Doctor>> getAllDoctors() async {
+    try {
+      final snapshot = await _firestore
+          .collection('doctors')
+          .orderBy('rating', descending: true)
+          .get();
+      return _mapDoctorDocs(snapshot.docs);
+    } on FirebaseException {
+      final snapshot = await _firestore.collection('doctors').get();
+      final doctors = _mapDoctorDocs(snapshot.docs)
+        ..sort((a, b) => b.rating.compareTo(a.rating));
       return doctors;
     }
   }

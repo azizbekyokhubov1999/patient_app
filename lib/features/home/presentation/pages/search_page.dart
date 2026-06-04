@@ -8,7 +8,9 @@ import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/doctor.dart';
+import '../../domain/entities/filter_result.dart';
 import '../../domain/entities/hospital.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../manager/search_cubit.dart';
 import '../manager/search_state.dart';
 import '../widgets/recent_hospital_card.dart';
@@ -18,7 +20,9 @@ import '../widgets/recent_specialist_card.dart';
 const Color _kSearchFieldBackground = Color(0xFFF5F5F5);
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({this.initialFilter, super.key});
+
+  final FilterResult? initialFilter;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -42,7 +46,10 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SearchCubit()..loadRecentData(),
+      create: (_) => SearchCubit(
+        repository: AppDependencies.instance.searchRepository,
+        initialFilter: widget.initialFilter,
+      )..loadRecentData(),
       child: BlocListener<SearchCubit, SearchState>(
         listenWhen: (previous, current) => previous.query != current.query,
         listener: (context, state) {

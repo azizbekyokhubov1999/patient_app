@@ -156,7 +156,11 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.search,
-        builder: (context, state) => const SearchPage(),
+        builder: (context, state) {
+          final extra = state.extra;
+          final initialFilter = extra is FilterResult ? extra : null;
+          return SearchPage(initialFilter: initialFilter);
+        },
       ),
       GoRoute(
         path: AppPaths.services,
@@ -206,6 +210,7 @@ abstract final class AppRouter {
         builder: (context, state) => BlocProvider(
           create: (_) => NearbyHospitalsCubit(
             repository: AppDependencies.instance.homeRepository,
+            doctorsRepository: AppDependencies.instance.doctorsRepository,
           )..loadNearbyHospitals(),
           child: const NearbyHospitalsPage(),
         ),

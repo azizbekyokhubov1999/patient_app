@@ -80,29 +80,6 @@ class AppointmentsPage extends StatelessWidget {
             'Appointments',
             style: AppTextStyles.headlineSmall,
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(30),
-                onTap: () {},
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.stroke),
-                    color: AppColors.white,
-                  ),
-                  child: const Icon(
-                    Icons.search,
-                    size: 20,
-                    color: AppColors.primaryText,
-                  ),
-                ),
-              ),
-            ),
-          ],
           bottom: const TabBar(
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.secondaryText,

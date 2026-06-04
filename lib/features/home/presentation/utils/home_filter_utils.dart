@@ -54,7 +54,28 @@ bool _matchesSpecialist(Doctor doctor, String specialist) {
 
 bool _matchesConsultationType(Doctor doctor, String consultationType) {
   if (consultationType == 'All') return true;
-  return true;
+
+  final blob =
+      '${doctor.specialty} ${doctor.about}'.toLowerCase().replaceAll(
+        RegExp(r'[^a-z0-9]+'),
+        ' ',
+      );
+
+  switch (consultationType) {
+    case 'Messaging':
+      return blob.contains('messag');
+    case 'Voice Call':
+      return blob.contains('voice');
+    case 'Video Call':
+      return blob.contains('video');
+    case 'In Person':
+      return blob.contains('in person') ||
+          blob.contains('inperson') ||
+          blob.contains('offline') ||
+          blob.contains('person');
+    default:
+      return true;
+  }
 }
 
 List<Doctor> filterDoctors(List<Doctor> doctors, FilterResult filter) {

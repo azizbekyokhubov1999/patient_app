@@ -253,42 +253,7 @@ class _HomeHeader extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Location',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: AppColors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        const Icon(
-                          LucideIcons.mapPin,
-                          color: AppColors.yellow,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'New York, USA',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(
-                          LucideIcons.chevronDown,
-                          color: AppColors.white,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              const Spacer(),
               BlocBuilder<NotificationCubit, NotificationState>(
                 builder: (context, notifState) {
                   final count = notifState.unreadCount;
@@ -347,7 +312,10 @@ class _HomeHeader extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => context.push(AppPaths.search),
+                    onTap: () {
+                      final filter = context.read<HomeCubit>().currentFilter;
+                      context.push(AppPaths.search, extra: filter);
+                    },
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -382,6 +350,7 @@ class _HomeHeader extends StatelessWidget {
                     );
                     if (result != null && context.mounted) {
                       homeCubit.applyFilters(result);
+                      context.push(AppPaths.search, extra: result);
                     }
                   },
                   behavior: HitTestBehavior.opaque,

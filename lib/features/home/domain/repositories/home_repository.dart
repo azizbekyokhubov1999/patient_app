@@ -5,6 +5,8 @@ import '../entities/hospital.dart';
 abstract class HomeRepository {
   Future<List<Doctor>> getTopDoctors();
 
+  Future<List<Doctor>> getAllDoctors();
+
   Future<List<Hospital>> getNearbyHospitals();
 
   Future<List<Hospital>> getAllHospitals();
