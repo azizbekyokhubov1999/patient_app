@@ -13,10 +13,7 @@ class NotificationSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<SettingsCubit, SettingsState>(
-      listenWhen: (previous, current) =>
-          current is SettingsError ||
-          (current is SettingsActionSuccess &&
-              !current.message.contains('Account deleted')),
+      listenWhen: (previous, current) => current is SettingsError,
       listener: (context, state) {
         if (state is SettingsError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -25,18 +22,14 @@ class NotificationSettingsPage extends StatelessWidget {
               backgroundColor: AppColors.error,
             ),
           );
-        } else if (state is SettingsActionSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
         }
       },
       builder: (context, state) {
+        final isInitialLoading = state is SettingsLoading;
         final enabled = switch (state) {
           SettingsLoaded(:final notificationsEnabled) => notificationsEnabled,
           _ => context.read<SettingsCubit>().notificationsEnabled,
         };
-        final isBusy = state is SettingsLoading;
 
         return Scaffold(
           backgroundColor: AppColors.white,
@@ -44,42 +37,50 @@ class NotificationSettingsPage extends StatelessWidget {
             title: 'Notification Settings',
             backgroundColor: AppColors.white,
           ),
-          body: state is SettingsLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.md,
-                  ),
-                  children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'Push Notifications',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryText,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'Receive appointment reminders and updates',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.secondaryText,
-                        ),
-                      ),
-                      value: enabled,
-                      activeThumbColor: AppColors.white,
-                      activeTrackColor: AppColors.primary,
-                      onChanged: isBusy
-                          ? null
-                          : (value) => context
-                              .read<SettingsCubit>()
-                              .updateNotificationPreferences(value),
+          body: ListView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.md,
+            ),
+            children: [
+              if (isInitialLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                  ],
+                  ),
+                )
+              else
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Push Notifications',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Receive appointment reminders and updates',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  value: enabled,
+                  activeThumbColor: AppColors.white,
+                  activeTrackColor: AppColors.primary,
+                  onChanged: (value) => context
+                      .read<SettingsCubit>()
+                      .updateNotificationPreferences(value),
                 ),
+            ],
+          ),
         );
       },
     );

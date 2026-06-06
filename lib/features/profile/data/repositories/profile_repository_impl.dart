@@ -33,6 +33,42 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return _remoteDataSource.signOut();
   }
 
+  @override
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _remoteDataSource.updatePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  @override
+  Future<void> deleteUserAccount({
+    required String confirmationPassword,
+  }) {
+    return _remoteDataSource.deleteUserAccount(
+      confirmationPassword: confirmationPassword,
+    );
+  }
+
+  @override
+  Future<bool> getNotificationsEnabled(String uid) {
+    return _remoteDataSource.getNotificationsEnabled(uid);
+  }
+
+  @override
+  Future<void> setNotificationsEnabled({
+    required String uid,
+    required bool enabled,
+  }) {
+    return _remoteDataSource.setNotificationsEnabled(
+      uid: uid,
+      enabled: enabled,
+    );
+  }
+
   UserProfile _toEntity(UserModel model) {
     return UserProfile(
       uid: model.uid,

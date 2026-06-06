@@ -23,44 +23,19 @@ class ProfilePaymentMethodsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      appBar: const CustomAppBar(
-        title: 'Payment Methods',
+    return BlocProvider(
+      create: (_) => PaymentCubit(localOnly: true),
+      child: Scaffold(
         backgroundColor: AppColors.white,
-      ),
-      body: BlocBuilder<PaymentCubit, PaymentState>(
-        builder: (context, state) {
-          if (state.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        appBar: const CustomAppBar(
+          title: 'Payment Methods',
+          backgroundColor: AppColors.white,
+        ),
+        body: BlocBuilder<PaymentCubit, PaymentState>(
+          builder: (context, state) {
+            final defaultId = state.defaultMethodId;
 
-          if (state.isFailure) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      state.errorMessage ?? 'Failed to load payment methods',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () =>
-                          context.read<PaymentCubit>().loadPaymentMethods(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final defaultId = state.defaultMethodId;
-
-          return Column(
+            return Column(
             children: [
               Expanded(
                 child: SingleChildScrollView(
@@ -210,6 +185,7 @@ class ProfilePaymentMethodsPage extends StatelessWidget {
             ],
           );
         },
+      ),
       ),
     );
   }

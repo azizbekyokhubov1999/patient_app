@@ -13,12 +13,58 @@ import '../widgets/settings_menu_tile.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  Future<void> _showDeleteAccountDialog(BuildContext context) async {
-    final passwordController = TextEditingController();
-    var obscure = true;
-
+  Future<bool> _showDeleteConfirmationDialog(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Are you sure?',
+          style: AppTextStyles.headlineSmall,
+        ),
+        content: const Text(
+          'This action cannot be undone. Your account and all data will be permanently deleted.',
+          style: TextStyle(
+            fontSize: 15,
+            height: 1.45,
+            color: AppColors.secondaryText,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.secondaryText),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Delete Account',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _showDeletePasswordDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    var obscure = true;
+    var isDeleting = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
@@ -34,7 +80,7 @@ class SettingsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'This action is permanent. Enter your password to confirm account deletion.',
+                  'Enter your password to confirm account deletion.',
                   style: TextStyle(
                     fontSize: 15,
                     height: 1.45,
@@ -45,6 +91,7 @@ class SettingsPage extends StatelessWidget {
                 TextField(
                   controller: passwordController,
                   obscureText: obscure,
+                  enabled: !isDeleting,
                   decoration: InputDecoration(
                     hintText: 'Password',
                     filled: true,
@@ -54,9 +101,11 @@ class SettingsPage extends StatelessWidget {
                       borderSide: BorderSide.none,
                     ),
                     suffixIcon: IconButton(
-                      onPressed: () {
-                        setDialogState(() => obscure = !obscure);
-                      },
+                      onPressed: isDeleting
+                          ? null
+                          : () {
+                              setDialogState(() => obscure = !obscure);
+                            },
                       icon: Icon(
                         obscure
                             ? Icons.visibility_off_outlined
@@ -69,21 +118,60 @@ class SettingsPage extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
+                onPressed:
+                    isDeleting ? null : () => Navigator.pop(dialogContext),
                 child: const Text(
                   'Cancel',
                   style: TextStyle(color: AppColors.secondaryText),
                 ),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        final password = passwordController.text.trim();
+                        if (password.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter your password'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isDeleting = true);
+
+                        final deleted = await context
+                            .read<SettingsCubit>()
+                            .deleteUserAccount(
+                              confirmationPassword: password,
+                            );
+
+                        if (!dialogContext.mounted) return;
+
+                        if (deleted) {
+                          Navigator.pop(dialogContext);
+                          if (context.mounted) {
+                            context.go(AppPaths.signIn);
+                          }
+                          return;
+                        }
+
+                        setDialogState(() => isDeleting = false);
+                      },
+                child: isDeleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ],
           );
@@ -91,50 +179,31 @@ class SettingsPage extends StatelessWidget {
       ),
     );
 
-    if (confirmed != true || !context.mounted) {
-      passwordController.dispose();
-      return;
-    }
-
-    final password = passwordController.text.trim();
     passwordController.dispose();
+  }
 
-    if (password.isEmpty) {
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final confirmed = await _showDeleteConfirmationDialog(context);
+    if (!confirmed || !context.mounted) return;
+
+    await _showDeletePasswordDialog(context);
+
+    if (!context.mounted) return;
+
+    final state = context.read<SettingsCubit>().state;
+    if (state is SettingsActionSuccess && state.message.contains('mock')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your password')),
+        const SnackBar(
+          content: Text('Account deletion simulated in mock mode'),
+        ),
       );
-      return;
-    }
-
-    final deleted = await context
-        .read<SettingsCubit>()
-        .deleteUserAccount(confirmationPassword: password);
-
-    if (deleted && context.mounted) {
-      context.go(AppPaths.signIn);
-      return;
-    }
-
-    if (context.mounted) {
-      final state = context.read<SettingsCubit>().state;
-      if (state is SettingsActionSuccess &&
-          state.message.contains('mock')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account deletion simulated in mock mode'),
-          ),
-        );
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<SettingsCubit, SettingsState>(
-      listenWhen: (previous, current) =>
-          current is SettingsError ||
-          (current is SettingsActionSuccess &&
-              current.message.contains('Account deleted')),
+      listenWhen: (previous, current) => current is SettingsError,
       listener: (context, state) {
         if (state is SettingsError) {
           ScaffoldMessenger.of(context).showSnackBar(

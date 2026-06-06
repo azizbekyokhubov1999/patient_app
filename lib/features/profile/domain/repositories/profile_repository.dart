@@ -11,4 +11,20 @@ abstract class ProfileRepository {
   });
 
   Future<void> signOut();
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<void> deleteUserAccount({
+    required String confirmationPassword,
+  });
+
+  Future<bool> getNotificationsEnabled(String uid);
+
+  Future<void> setNotificationsEnabled({
+    required String uid,
+    required bool enabled,
+  });
 }

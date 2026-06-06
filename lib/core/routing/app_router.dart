@@ -562,29 +562,32 @@ abstract final class AppRouter {
       ),
       GoRoute(
         path: AppPaths.profilePaymentMethods,
-        builder: (context, state) => BlocProvider(
-          create: (_) => PaymentCubit()..loadPaymentMethods(),
-          child: const ProfilePaymentMethodsPage(),
-        ),
+        builder: (context, state) => const ProfilePaymentMethodsPage(),
       ),
       GoRoute(
         path: AppPaths.settings,
         builder: (context, state) => BlocProvider(
-          create: (_) => SettingsCubit()..loadSettings(),
+          create: (_) => SettingsCubit(
+            profileRepository: AppDependencies.instance.profileRepository,
+          )..loadSettings(),
           child: const SettingsPage(),
         ),
         routes: [
           GoRoute(
             path: 'notifications',
             builder: (context, state) => BlocProvider(
-              create: (_) => SettingsCubit()..loadSettings(),
+              create: (_) => SettingsCubit(
+                profileRepository: AppDependencies.instance.profileRepository,
+              )..loadSettings(),
               child: const NotificationSettingsPage(),
             ),
           ),
           GoRoute(
             path: 'password-manager',
             builder: (context, state) => BlocProvider(
-              create: (_) => SettingsCubit()..loadSettings(),
+              create: (_) => SettingsCubit(
+                profileRepository: AppDependencies.instance.profileRepository,
+              ),
               child: const PasswordManagerPage(),
             ),
           ),

@@ -11,16 +11,28 @@ import 'payment_state.dart';
 
 class PaymentCubit extends Cubit<PaymentState> {
   PaymentCubit({
+    bool localOnly = false,
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
+  })  : _localOnly = localOnly,
+        _auth = auth ?? FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
-        super(const PaymentState());
+        super(
+          localOnly
+              ? const PaymentState(
+                  status: PaymentStatus.loaded,
+                  defaultMethodId: PaymentMethodIds.paypal,
+                )
+              : const PaymentState(),
+        );
 
+  final bool _localOnly;
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
   Future<void> loadPaymentMethods() async {
+    if (_localOnly) return;
+
     emit(state.copyWith(status: PaymentStatus.loading, errorMessage: null));
 
     if (kUseProfileMockData) {
@@ -85,7 +97,7 @@ class PaymentCubit extends Cubit<PaymentState> {
   Future<void> setDefaultPaymentMethod(String methodId) async {
     emit(state.copyWith(defaultMethodId: methodId));
 
-    if (kUseProfileMockData) return;
+    if (_localOnly || kUseProfileMockData) return;
 
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
@@ -119,7 +131,7 @@ class PaymentCubit extends Cubit<PaymentState> {
     );
 
     try {
-      if (!kUseProfileMockData) {
+      if (!_localOnly && !kUseProfileMockData) {
         final uid = _auth.currentUser?.uid;
         if (uid == null) return;
 

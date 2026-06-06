@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -71,6 +70,7 @@ class _PasswordManagerPageState extends State<PasswordManagerPage> {
     context.read<SettingsCubit>().updatePassword(
           currentPassword: _currentController.text,
           newPassword: _newController.text,
+          confirmPassword: _confirmController.text,
         );
   }
 
@@ -86,7 +86,10 @@ class _PasswordManagerPageState extends State<PasswordManagerPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
           );
-          if (context.mounted) context.pop();
+          _currentController.clear();
+          _newController.clear();
+          _confirmController.clear();
+          _formKey.currentState?.reset();
         } else if (state is SettingsError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
