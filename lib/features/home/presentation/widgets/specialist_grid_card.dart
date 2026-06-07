@@ -9,11 +9,13 @@ class SpecialistGridCard extends StatelessWidget {
   const SpecialistGridCard({
     required this.doctor,
     required this.onTap,
+    this.onFavoriteToggle,
     super.key,
   });
 
   final Doctor doctor;
   final VoidCallback onTap;
+  final VoidCallback? onFavoriteToggle;
 
   static const Color _nameColor = Color(0xFF1A1A2E);
 
@@ -79,6 +81,31 @@ class SpecialistGridCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (onFavoriteToggle != null)
+                        Positioned(
+                          left: -2,
+                          top: -2,
+                          child: Material(
+                            color: AppColors.white,
+                            shape: const CircleBorder(),
+                            elevation: 1,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onFavoriteToggle,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  LucideIcons.heart,
+                                  size: 14,
+                                  color: doctor.isFavorite
+                                      ? Colors.red
+                                      : AppColors.secondaryText,
+                                  fill: doctor.isFavorite ? 1 : 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

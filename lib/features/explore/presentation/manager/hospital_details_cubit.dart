@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_review.dart';
+import '../../../home/domain/repositories/doctors_repository.dart';
 import 'hospital_details_state.dart';
 
 class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
@@ -10,15 +11,45 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
   static const String filterLatest = 'Latest';
   static const String filterDetailed = 'Detailed Reviews';
 
-  HospitalDetailsCubit(Hospital initialHospital)
-    : super(
-        HospitalDetailsState(
-          hospital: initialHospital,
-          selectedTabIndex: 0,
-          reviewQuery: '',
-          activeReviewFilters: {filterVerified, filterLatest},
+  HospitalDetailsCubit({
+    required Hospital initialHospital,
+    required DoctorsRepository doctorsRepository,
+  })  : _doctorsRepository = doctorsRepository,
+        super(
+          HospitalDetailsState(
+            hospital: initialHospital,
+            selectedTabIndex: 0,
+            reviewQuery: '',
+            activeReviewFilters: {filterVerified, filterLatest},
+          ),
+        ) {
+    loadSpecialists();
+  }
+
+  final DoctorsRepository _doctorsRepository;
+
+  Future<void> loadSpecialists() async {
+    emit(state.copyWith(isLoadingSpecialists: true));
+
+    try {
+      final specialists = await _doctorsRepository.getHospitalSpecialists(
+        state.hospital.id,
+      );
+      emit(
+        state.copyWith(
+          hospital: state.hospital.copyWith(specialists: specialists),
+          isLoadingSpecialists: false,
         ),
       );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          hospital: state.hospital.copyWith(specialists: const []),
+          isLoadingSpecialists: false,
+        ),
+      );
+    }
+  }
 
   void setTab(int index) {
     if (index == state.selectedTabIndex) return;

@@ -41,7 +41,7 @@ class Doctor {
   final List<DoctorReview> patientReviews;
   final String? mapImageUrl;
 
-  /// Persisted on the `doctors/{docId}` document in Firestore.
+  /// UI-only flag — resolved from `users/{uid}.favoriteDoctorIds`.
   final bool isFavorite;
 
   Doctor copyWith({

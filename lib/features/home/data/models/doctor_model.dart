@@ -44,7 +44,7 @@ abstract final class DoctorModel {
       longitude: lng,
       patientReviews: const [],
       mapImageUrl: (data['mapImageUrl'] as String?)?.trim(),
-      isFavorite: data['isFavorite'] as bool? ?? false,
+      isFavorite: false,
     );
   }
 

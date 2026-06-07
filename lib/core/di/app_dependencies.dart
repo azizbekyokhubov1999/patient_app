@@ -88,7 +88,10 @@ final class AppDependencies {
     final couponsRemote = CouponsRemoteDataSourceImpl(firestore: db);
     couponsRepository = CouponsRepositoryImpl(couponsRemote);
 
-    final doctorRemote = DoctorRemoteDataSourceImpl(firestore: db);
+    final doctorRemote = DoctorRemoteDataSourceImpl(
+      firestore: db,
+      auth: FirebaseAuth.instance,
+    );
     doctorsRepository = DoctorsRepositoryImpl(doctorRemote);
     homeRepository = HomeRepositoryImpl(
       HomeRemoteDataSourceImpl(firestore: db),

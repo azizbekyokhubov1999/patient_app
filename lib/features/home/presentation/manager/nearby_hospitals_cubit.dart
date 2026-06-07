@@ -20,7 +20,14 @@ class NearbyHospitalsCubit extends Cubit<NearbyHospitalsState> {
     emit(const NearbyHospitalsLoading());
 
     try {
-      final list = await _repository.getAllHospitals();
+      final favoriteIds = await _doctorsRepository.getFavoriteHospitalIds();
+      final list = (await _repository.getAllHospitals())
+          .map(
+            (hospital) => hospital.copyWith(
+              isFavorite: favoriteIds.contains(hospital.id),
+            ),
+          )
+          .toList(growable: false);
 
       if (list.isEmpty) {
         emit(const NearbyHospitalsEmpty());

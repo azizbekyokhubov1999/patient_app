@@ -186,6 +186,11 @@ class _TopSpecialistPageState extends State<TopSpecialistPage> {
                       AppPaths.doctorDetail,
                       extra: doctor,
                     ),
+                    onFavoriteToggle: doctor.documentId.isEmpty
+                        ? null
+                        : () => context
+                            .read<TopSpecialistCubit>()
+                            .toggleDoctorFavorite(doctor.documentId),
                   );
                 },
               ),

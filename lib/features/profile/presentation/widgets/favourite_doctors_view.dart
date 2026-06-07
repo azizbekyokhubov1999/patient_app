@@ -16,7 +16,9 @@ class FavouriteDoctorsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (doctors.isEmpty) {
-      return const FavouritesEmptyView();
+      return const FavouritesEmptyView(
+        message: 'No favourite doctors yet',
+      );
     }
 
     return ListView.separated(

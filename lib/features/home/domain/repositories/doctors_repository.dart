@@ -11,11 +11,17 @@ abstract class DoctorsRepository {
 
   Future<List<Doctor>> getAllDoctors();
 
+  Future<List<Doctor>> getHospitalSpecialists(String hospitalId);
+
   Future<List<Doctor>> getFavoriteDoctors();
 
   Stream<List<Doctor>> watchFavoriteDoctors();
 
   Stream<bool> watchDoctorFavorite(String doctorId);
+
+  Future<Set<String>> getFavoriteDoctorIds();
+
+  Future<Set<String>> getFavoriteHospitalIds();
 
   Future<List<Hospital>> getFavoriteHospitals({
     double currentLat = 0,

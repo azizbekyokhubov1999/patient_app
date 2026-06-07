@@ -146,43 +146,18 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                           ),
                           const SizedBox(height: 26),
                           Center(
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.stroke,
-                                  ),
-                                  child: const Icon(
-                                    Icons.person_outline_rounded,
-                                    size: 74,
-                                    color: AppColors.primaryText,
-                                  ),
-                                ),
-                                Positioned(
-                                  right: 2,
-                                  bottom: 6,
-                                  child: InkWell(
-                                    onTap: () {},
-                                    child: Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: AppColors.primary,
-                                      ),
-                                      child: const Icon(
-                                        Icons.edit_outlined,
-                                        color: AppColors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.stroke,
+                              ),
+                              child: const Icon(
+                                Icons.person_outline_rounded,
+                                size: 74,
+                                color: AppColors.primaryText,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 26),

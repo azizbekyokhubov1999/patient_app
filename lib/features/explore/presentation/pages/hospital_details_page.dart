@@ -4,63 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/constants/app_paths.dart';
+import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../booking/presentation/utils/booking_navigation.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../home/domain/entities/doctor.dart';
-import '../../../home/domain/entities/doctor_review.dart';
 import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_contact_person.dart';
-import '../../../home/domain/entities/working_hours_entry.dart';
 import '../../../home/domain/entities/hospital_review.dart';
 import '../../../home/presentation/manager/get_direction_args.dart';
 import '../manager/hospital_details_cubit.dart';
 import '../manager/hospital_details_state.dart';
-
-final List<Doctor> _kFallbackHospitalSpecialists = [
-  Doctor(
-    name: 'Dr. Robert Fox',
-    specialty: 'Dentist',
-    rating: 5.0,
-    reviewsCount: 12,
-    imageUrl:
-        'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=800&q=80',
-    about:
-        'Experienced dentist focusing on minimally invasive treatment and preventive care.',
-    patientsCount: 890,
-    experienceYears: 4,
-    workingHours: const [
-      WorkingHoursEntry('Monday - Friday', '09:00 am - 06:00 pm'),
-    ],
-    address: '2464 Royal Ln. Mesa, New Jersey 45463',
-    latitude: 40.7153,
-    longitude: -74.0024,
-    mapImageUrl:
-        'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80',
-    patientReviews: const <DoctorReview>[],
-  ),
-  Doctor(
-    name: 'Dr. Sophia Rossi',
-    specialty: 'Otology Specialist',
-    rating: 4.9,
-    reviewsCount: 53,
-    imageUrl:
-        'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=800&q=80',
-    about:
-        'Specialist in ear disorders with extensive surgical and non-surgical care experience.',
-    patientsCount: 1200,
-    experienceYears: 8,
-    workingHours: const [
-      WorkingHoursEntry('Monday - Friday', '10:00 am - 06:00 pm'),
-      WorkingHoursEntry('Saturday', '10:00 am - 02:00 pm'),
-    ],
-    address: '2464 Royal Ln. Mesa, New Jersey 45463',
-    latitude: 40.7153,
-    longitude: -74.0024,
-    mapImageUrl:
-        'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80',
-    patientReviews: const <DoctorReview>[],
-  ),
-];
 
 class HospitalDetailsPage extends StatelessWidget {
   const HospitalDetailsPage({required this.hospital, super.key});
@@ -85,7 +39,7 @@ class HospitalDetailsPage extends StatelessWidget {
         'Eye Treatments',
         'Ear Treatments',
       ],
-      specialists: _kFallbackHospitalSpecialists,
+      specialists: const [],
       timings: const {
         'Monday': '00:00 - 00:00',
         'Tuesday': '00:00 - 00:00',
@@ -154,7 +108,10 @@ class HospitalDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => HospitalDetailsCubit(hospital),
+      create: (_) => HospitalDetailsCubit(
+        initialHospital: hospital,
+        doctorsRepository: AppDependencies.instance.doctorsRepository,
+      ),
       child: const _HospitalDetailsView(),
     );
   }
@@ -178,6 +135,24 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
   static const _previewLength = 140;
   bool _expandedAbout = false;
 
+  void _onBookAppointmentPressed(
+    BuildContext context,
+    List<Doctor> specialists,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _SpecialistSelectionSheet(
+        specialists: specialists,
+        onSpecialistSelected: (doctor) {
+          Navigator.pop(sheetContext);
+          context.push(AppPaths.doctorDetail, extra: doctor);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<HospitalDetailsCubit, HospitalDetailsState>(
@@ -192,10 +167,21 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
             child: SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: () => BookingNavigation.startBooking(
-                  context,
-                  hospital: h,
-                ),
+                onPressed: () {
+                  if (state.isLoadingSpecialists) return;
+
+                  final specialists = h.specialists;
+                  if (specialists.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No specialists available for booking'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  _onBookAppointmentPressed(context, specialists);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
@@ -241,7 +227,7 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
                             _TreatmentsTab(treatments: h.treatments),
                             _SpecialistsTab(
                               specialists: h.specialists,
-                              hospital: h,
+                              isLoading: state.isLoadingSpecialists,
                             ),
                             _GalleryTab(galleryImages: h.galleryImages),
                             _ReviewsTab(
@@ -917,11 +903,11 @@ class _TreatmentsTab extends StatelessWidget {
 class _SpecialistsTab extends StatelessWidget {
   const _SpecialistsTab({
     required this.specialists,
-    required this.hospital,
+    required this.isLoading,
   });
 
   final List<Doctor> specialists;
-  final Hospital hospital;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -938,9 +924,16 @@ class _SpecialistsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          if (specialists.isEmpty)
+          if (isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (specialists.isEmpty)
             Text(
-              'No specialists available yet.',
+              'No specialists available',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondaryText),
@@ -952,10 +945,7 @@ class _SpecialistsTab extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) =>
-                  _SpecialistCard(
-                    doctor: specialists[index],
-                    hospital: hospital,
-                  ),
+                  _SpecialistCard(doctor: specialists[index]),
             ),
         ],
       ),
@@ -964,13 +954,9 @@ class _SpecialistsTab extends StatelessWidget {
 }
 
 class _SpecialistCard extends StatefulWidget {
-  const _SpecialistCard({
-    required this.doctor,
-    required this.hospital,
-  });
+  const _SpecialistCard({required this.doctor});
 
   final Doctor doctor;
-  final Hospital hospital;
 
   @override
   State<_SpecialistCard> createState() => _SpecialistCardState();
@@ -988,7 +974,7 @@ class _SpecialistCardState extends State<_SpecialistCard> {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(AppPaths.doctorDetails, extra: doctor),
+        onTap: () => context.push(AppPaths.doctorDetail, extra: doctor),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -1130,11 +1116,7 @@ class _SpecialistCardState extends State<_SpecialistCard> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () =>
-                      BookingNavigation.startBooking(
-                        context,
-                        hospital: widget.hospital,
-                        selectedSpecialist: doctor,
-                      ),
+                      context.push(AppPaths.doctorDetail, extra: doctor),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.background,
                     foregroundColor: AppColors.primary,
@@ -1708,6 +1690,166 @@ class _CircleIconButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(9),
           child: Icon(icon, size: 18, color: AppColors.primaryText),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpecialistSelectionSheet extends StatelessWidget {
+  const _SpecialistSelectionSheet({
+    required this.specialists,
+    required this.onSpecialistSelected,
+  });
+
+  final List<Doctor> specialists;
+  final ValueChanged<Doctor> onSpecialistSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.75;
+
+    return Container(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const SizedBox(width: 40),
+              Expanded(
+                child: Text(
+                  'Select a Specialist',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.primaryText,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  LucideIcons.x,
+                  color: AppColors.primaryText,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: specialists.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+              itemBuilder: (context, index) {
+                final doctor = specialists[index];
+                return _SpecialistSelectionTile(
+                  doctor: doctor,
+                  onTap: () => onSpecialistSelected(doctor),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpecialistSelectionTile extends StatelessWidget {
+  const _SpecialistSelectionTile({
+    required this.doctor,
+    required this.onTap,
+  });
+
+  final Doctor doctor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.neutral200),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.neutral200,
+                backgroundImage: doctor.imageUrl.trim().isNotEmpty
+                    ? NetworkImage(doctor.imageUrl)
+                    : null,
+                child: doctor.imageUrl.trim().isEmpty
+                    ? const Icon(
+                        LucideIcons.userRound,
+                        color: AppColors.secondaryText,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doctor.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.titleMedium.copyWith(
+                        fontSize: 16,
+                        color: AppColors.primaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      doctor.specialty,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    LucideIcons.star,
+                    size: 16,
+                    color: Colors.amber,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    doctor.rating.toStringAsFixed(1),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      fontSize: 14,
+                      color: AppColors.primaryText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

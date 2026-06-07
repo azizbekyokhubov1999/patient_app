@@ -31,6 +31,10 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   Future<List<Doctor>> getAllDoctors() => _remote.getAllDoctors();
 
   @override
+  Future<List<Doctor>> getHospitalSpecialists(String hospitalId) =>
+      _remote.getHospitalSpecialists(hospitalId);
+
+  @override
   Future<List<Doctor>> getFavoriteDoctors() {
     return _remote.getFavoriteDoctors();
   }
@@ -44,6 +48,13 @@ class DoctorsRepositoryImpl implements DoctorsRepository {
   Stream<bool> watchDoctorFavorite(String doctorId) {
     return _remote.watchDoctorFavorite(doctorId);
   }
+
+  @override
+  Future<Set<String>> getFavoriteDoctorIds() => _remote.getFavoriteDoctorIds();
+
+  @override
+  Future<Set<String>> getFavoriteHospitalIds() =>
+      _remote.getFavoriteHospitalIds();
 
   @override
   Future<List<Hospital>> getFavoriteHospitals({

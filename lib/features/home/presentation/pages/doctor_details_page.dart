@@ -45,7 +45,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   void initState() {
     super.initState();
     _doctor = widget.doctor;
-    _favorite = _doctor.isFavorite;
+    _favorite = widget.doctor.isFavorite;
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _refreshDoctorFromFirestore();
     _listenToFavoriteChanges();
@@ -61,10 +61,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
       final fresh =
           await AppDependencies.instance.doctorsRepository.getDoctorById(id);
       if (!mounted || fresh == null) return;
-      setState(() {
-        _doctor = fresh;
-        _favorite = fresh.isFavorite;
-      });
+      setState(() => _doctor = fresh);
     } catch (_) {}
   }
 
@@ -77,10 +74,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
         .watchDoctorById(id)
         .listen((doctor) {
       if (!mounted || doctor == null) return;
-      setState(() {
-        _doctor = doctor;
-        _favorite = doctor.isFavorite;
-      });
+      setState(() => _doctor = doctor);
     });
   }
 

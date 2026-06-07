@@ -28,6 +28,7 @@ class Hospital {
     required this.longitude,
     this.mapImageUrl,
     this.specialties = const [],
+    this.specialistIds = const [],
     this.distanceInMiles = 0,
     this.durationInMinutes = 0,
     this.isFavorite = false,
@@ -58,13 +59,16 @@ class Hospital {
   /// Optional specialty chips (falls back to [tags] in UI when empty).
   final List<String> specialties;
 
+  /// Firestore doctor document ids linked to this hospital.
+  final List<String> specialistIds;
+
   /// Canonical distance used for sorting and filters (derived if zero).
   final double distanceInMiles;
 
   /// Travel time estimate in minutes for cards (derived if zero via [eta]).
   final int durationInMinutes;
 
-  /// User favorite flag from auth subcollection when loaded remotely.
+  /// UI-only flag — resolved from `users/{uid}.favoriteHospitalIds`.
   final bool isFavorite;
 
   Hospital copyWith({
@@ -88,6 +92,7 @@ class Hospital {
     double? longitude,
     String? mapImageUrl,
     List<String>? specialties,
+    List<String>? specialistIds,
     double? distanceInMiles,
     int? durationInMinutes,
     bool? isFavorite,
@@ -113,6 +118,7 @@ class Hospital {
       longitude: longitude ?? this.longitude,
       mapImageUrl: mapImageUrl ?? this.mapImageUrl,
       specialties: specialties ?? this.specialties,
+      specialistIds: specialistIds ?? this.specialistIds,
       distanceInMiles: distanceInMiles ?? this.distanceInMiles,
       durationInMinutes: durationInMinutes ?? this.durationInMinutes,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -239,11 +245,20 @@ class Hospital {
             latitude: (mm['latitude'] as num?)?.toDouble() ?? 0,
             longitude: (mm['longitude'] as num?)?.toDouble() ?? 0,
             patientReviews: const [],
-            isFavorite: mm['isFavorite'] as bool? ?? false,
+            isFavorite: false,
           ),
         );
       }
       specialistsParsed = out;
+    }
+
+    List<String> specialistIdsParsed = const [];
+    final specialistIdsRaw = data['specialistIds'];
+    if (specialistIdsRaw is List) {
+      specialistIdsParsed = specialistIdsRaw
+          .map((item) => item.toString().trim())
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
     }
 
     final hospLat = (data['latitude'] as num?)?.toDouble() ?? 0;
@@ -302,6 +317,7 @@ class Hospital {
       treatments:
           treatmentsParsed ?? const [],
       specialists: specialistsParsed ?? const [],
+      specialistIds: specialistIdsParsed,
       timings: timingsParsed,
       contactPerson: contactParsed,
       images: imagesParsed ?? const [],
@@ -312,7 +328,7 @@ class Hospital {
       mapImageUrl: mapImageUrl,
       distanceInMiles: milesNonNull,
       durationInMinutes: durationMinutes > 0 ? durationMinutes : 0,
-      isFavorite: data['isFavorite'] as bool? ?? false,
+      isFavorite: false,
     );
   }
 }

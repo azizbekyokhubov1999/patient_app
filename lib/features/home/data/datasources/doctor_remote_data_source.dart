@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' show min;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/hospital.dart';
@@ -15,6 +17,8 @@ abstract class DoctorRemoteDataSource {
   Future<List<Doctor>> getTopDoctors({String? specialty, int limit = 30});
 
   Future<List<Doctor>> getAllDoctors();
+
+  Future<List<Doctor>> getHospitalSpecialists(String hospitalId);
 
   Future<List<Doctor>> getFavoriteDoctors();
 
@@ -37,6 +41,10 @@ abstract class DoctorRemoteDataSource {
 
   Stream<bool> watchDoctorFavorite(String doctorId);
 
+  Future<Set<String>> getFavoriteDoctorIds();
+
+  Future<Set<String>> getFavoriteHospitalIds();
+
   Future<void> submitReview({
     required String doctorId,
     required String userId,
@@ -55,10 +63,22 @@ abstract class DoctorRemoteDataSource {
 }
 
 class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
-  DoctorRemoteDataSourceImpl({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  DoctorRemoteDataSourceImpl({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+
+  static const String _favoriteDoctorIdsField = 'favoriteDoctorIds';
+  static const String _favoriteHospitalIdsField = 'favoriteHospitalIds';
+
+  String get _uid => _auth.currentUser!.uid;
+
+  DocumentReference<Map<String, dynamic>> get _userDoc =>
+      _firestore.collection('users').doc(_uid);
 
   @override
   Future<Doctor?> getDoctorById(String doctorId) async {
@@ -202,19 +222,21 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
   }
 
   @override
+  Future<List<Doctor>> getHospitalSpecialists(String hospitalId) async {
+    final trimmedId = hospitalId.trim();
+    if (trimmedId.isEmpty) return const [];
+
+    final doc = await _firestore.collection('hospitals').doc(trimmedId).get();
+    if (!doc.exists) return const [];
+
+    final ids = _parseIdList(doc.data()?['specialistIds']);
+    return _fetchDoctorsByIds(ids, markFavorite: false);
+  }
+
+  @override
   Future<List<Doctor>> getFavoriteDoctors() async {
-    try {
-      final snapshot = await _firestore
-          .collection('doctors')
-          .where('isFavorite', isEqualTo: true)
-          .get();
-      return _mapDoctorDocs(snapshot.docs);
-    } on FirebaseException {
-      final snapshot = await _firestore.collection('doctors').get();
-      return _mapDoctorDocs(snapshot.docs)
-          .where((doctor) => doctor.isFavorite)
-          .toList();
-    }
+    final ids = await getFavoriteDoctorIds();
+    return _fetchDoctorsByIds(ids.toList(), markFavorite: true);
   }
 
   @override
@@ -222,18 +244,25 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
     double currentLat = 0,
     double currentLng = 0,
   }) async {
-    try {
-      final snapshot = await _firestore
-          .collection('hospitals')
-          .where('isFavorite', isEqualTo: true)
-          .get();
-      return _mapHospitalDocs(snapshot.docs, currentLat, currentLng);
-    } on FirebaseException {
-      final snapshot = await _firestore.collection('hospitals').get();
-      return _mapHospitalDocs(snapshot.docs, currentLat, currentLng)
-          .where((hospital) => hospital.isFavorite)
-          .toList();
-    }
+    final ids = await getFavoriteHospitalIds();
+    return _fetchHospitalsByIds(
+      ids.toList(),
+      currentLat: currentLat,
+      currentLng: currentLng,
+      markFavorite: true,
+    );
+  }
+
+  @override
+  Future<Set<String>> getFavoriteDoctorIds() async {
+    final snapshot = await _userDoc.get();
+    return _parseIdList(snapshot.data()?[_favoriteDoctorIdsField]).toSet();
+  }
+
+  @override
+  Future<Set<String>> getFavoriteHospitalIds() async {
+    final snapshot = await _userDoc.get();
+    return _parseIdList(snapshot.data()?[_favoriteHospitalIdsField]).toSet();
   }
 
   @override
@@ -246,47 +275,22 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
       throw ArgumentError('doctorId must be a non-empty Firestore document id');
     }
 
-    await _firestore.collection('doctors').doc(trimmedId).update({
-      'isFavorite': isFavorite,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await _userDoc.set(
+      {
+        _favoriteDoctorIdsField: isFavorite
+            ? FieldValue.arrayUnion([trimmedId])
+            : FieldValue.arrayRemove([trimmedId]),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   @override
   Stream<List<Doctor>> watchFavoriteDoctors() {
-    final controller = StreamController<List<Doctor>>.broadcast();
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? subscription;
-    var useFavoriteQuery = true;
-
-    void listen() {
-      subscription?.cancel();
-      final query = useFavoriteQuery
-          ? _firestore.collection('doctors').where('isFavorite', isEqualTo: true)
-          : _firestore.collection('doctors');
-
-      subscription = query.snapshots().listen(
-        (snapshot) {
-          final doctors = _mapDoctorDocs(snapshot.docs);
-          controller.add(
-            useFavoriteQuery
-                ? doctors
-                : doctors.where((doctor) => doctor.isFavorite).toList(),
-          );
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          if (useFavoriteQuery) {
-            useFavoriteQuery = false;
-            listen();
-            return;
-          }
-          controller.addError(error, stackTrace);
-        },
-      );
-    }
-
-    listen();
-    controller.onCancel = () => subscription?.cancel();
-    return controller.stream;
+    return _userDoc.snapshots().asyncMap((snapshot) async {
+      final ids = _parseIdList(snapshot.data()?[_favoriteDoctorIdsField]);
+      return _fetchDoctorsByIds(ids, markFavorite: true);
+    });
   }
 
   @override
@@ -296,13 +300,9 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
       return Stream<bool>.value(false);
     }
 
-    return _firestore
-        .collection('doctors')
-        .doc(trimmedId)
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists) return false;
-      return snapshot.data()?['isFavorite'] as bool? ?? false;
+    return _userDoc.snapshots().map((snapshot) {
+      final ids = _parseIdList(snapshot.data()?[_favoriteDoctorIdsField]);
+      return ids.contains(trimmedId);
     });
   }
 
@@ -311,45 +311,15 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
     double currentLat = 0,
     double currentLng = 0,
   }) {
-    final controller = StreamController<List<Hospital>>.broadcast();
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? subscription;
-    var useFavoriteQuery = true;
-
-    void listen() {
-      subscription?.cancel();
-      final query = useFavoriteQuery
-          ? _firestore
-              .collection('hospitals')
-              .where('isFavorite', isEqualTo: true)
-          : _firestore.collection('hospitals');
-
-      subscription = query.snapshots().listen(
-        (snapshot) {
-          final hospitals = _mapHospitalDocs(
-            snapshot.docs,
-            currentLat,
-            currentLng,
-          );
-          controller.add(
-            useFavoriteQuery
-                ? hospitals
-                : hospitals.where((hospital) => hospital.isFavorite).toList(),
-          );
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          if (useFavoriteQuery) {
-            useFavoriteQuery = false;
-            listen();
-            return;
-          }
-          controller.addError(error, stackTrace);
-        },
+    return _userDoc.snapshots().asyncMap((snapshot) async {
+      final ids = _parseIdList(snapshot.data()?[_favoriteHospitalIdsField]);
+      return _fetchHospitalsByIds(
+        ids,
+        currentLat: currentLat,
+        currentLng: currentLng,
+        markFavorite: true,
       );
-    }
-
-    listen();
-    controller.onCancel = () => subscription?.cancel();
-    return controller.stream;
+    });
   }
 
   @override
@@ -364,10 +334,94 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
       );
     }
 
-    await _firestore.collection('hospitals').doc(trimmedId).update({
-      'isFavorite': isFavorite,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    await _userDoc.set(
+      {
+        _favoriteHospitalIdsField: isFavorite
+            ? FieldValue.arrayUnion([trimmedId])
+            : FieldValue.arrayRemove([trimmedId]),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  List<String> _parseIdList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((item) => item.toString().trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<List<Doctor>> _fetchDoctorsByIds(
+    List<String> ids, {
+    required bool markFavorite,
+  }) async {
+    if (ids.isEmpty) return const [];
+
+    final uniqueIds = ids.toSet().toList();
+    final byId = <String, Doctor>{};
+
+    for (var i = 0; i < uniqueIds.length; i += 30) {
+      final chunk = uniqueIds.sublist(i, min(i + 30, uniqueIds.length));
+      final snapshot = await _firestore
+          .collection('doctors')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final doctor = DoctorModel.fromFirestore(doc.data(), doc.id);
+        byId[doc.id] = markFavorite ? doctor.copyWith(isFavorite: true) : doctor;
+      }
+    }
+
+    final ordered = <Doctor>[];
+    for (final id in ids) {
+      final doctor = byId[id];
+      if (doctor != null) {
+        ordered.add(doctor);
+      }
+    }
+    return ordered;
+  }
+
+  Future<List<Hospital>> _fetchHospitalsByIds(
+    List<String> ids, {
+    required double currentLat,
+    required double currentLng,
+    required bool markFavorite,
+  }) async {
+    if (ids.isEmpty) return const [];
+
+    final uniqueIds = ids.toSet().toList();
+    final byId = <String, Hospital>{};
+
+    for (var i = 0; i < uniqueIds.length; i += 30) {
+      final chunk = uniqueIds.sublist(i, min(i + 30, uniqueIds.length));
+      final snapshot = await _firestore
+          .collection('hospitals')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final hospital = Hospital.fromFirestore(
+          doc.data(),
+          doc.id,
+          currentLat: currentLat,
+          currentLng: currentLng,
+        );
+        byId[doc.id] =
+            markFavorite ? hospital.copyWith(isFavorite: true) : hospital;
+      }
+    }
+
+    final ordered = <Hospital>[];
+    for (final id in ids) {
+      final hospital = byId[id];
+      if (hospital != null) {
+        ordered.add(hospital);
+      }
+    }
+    return ordered;
   }
 
   List<Doctor> _mapDoctorDocs(
@@ -375,23 +429,6 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
   ) {
     return docs
         .map((doc) => DoctorModel.fromFirestore(doc.data(), doc.id))
-        .toList();
-  }
-
-  List<Hospital> _mapHospitalDocs(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-    double currentLat,
-    double currentLng,
-  ) {
-    return docs
-        .map(
-          (doc) => Hospital.fromFirestore(
-            doc.data(),
-            doc.id,
-            currentLat: currentLat,
-            currentLng: currentLng,
-          ),
-        )
         .toList();
   }
 }

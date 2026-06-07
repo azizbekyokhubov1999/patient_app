@@ -19,22 +19,65 @@ class TopSpecialistCubit extends Cubit<TopSpecialistState> {
     emit(const TopSpecialistLoading());
 
     try {
+      final favoriteIds = await _doctorsRepository.getFavoriteDoctorIds();
       final doctors = await _doctorsRepository.getTopDoctors(
         specialty: _initialSpecialty,
       );
+      final withFavorites = _applyFavoriteFlags(doctors, favoriteIds);
 
-      if (doctors.isEmpty) {
+      if (withFavorites.isEmpty) {
         emit(const TopSpecialistEmpty());
       } else {
         emit(
           TopSpecialistLoaded(
-            doctors: doctors,
-            filteredDoctors: List<Doctor>.from(doctors),
+            doctors: withFavorites,
+            filteredDoctors: List<Doctor>.from(withFavorites),
           ),
         );
       }
     } catch (e) {
       emit(TopSpecialistError(e.toString()));
+    }
+  }
+
+  Future<void> toggleDoctorFavorite(String doctorId) async {
+    final current = state;
+    if (current is! TopSpecialistLoaded) return;
+
+    Doctor? doctor;
+    for (final d in current.doctors) {
+      if (d.documentId == doctorId) {
+        doctor = d;
+        break;
+      }
+    }
+    if (doctor == null) return;
+
+    final nextFavorite = !doctor.isFavorite;
+
+    List<Doctor> mapFavorite(List<Doctor> source) {
+      return source
+          .map(
+            (d) => d.documentId == doctorId
+                ? d.copyWith(isFavorite: nextFavorite)
+                : d,
+          )
+          .toList();
+    }
+
+    final optimistic = TopSpecialistLoaded(
+      doctors: mapFavorite(current.doctors),
+      filteredDoctors: mapFavorite(current.filteredDoctors),
+    );
+    emit(optimistic);
+
+    try {
+      await _doctorsRepository.toggleDoctorFavorite(
+        doctorId: doctorId,
+        isFavorite: nextFavorite,
+      );
+    } catch (_) {
+      emit(current);
     }
   }
 
@@ -74,4 +117,14 @@ class TopSpecialistCubit extends Cubit<TopSpecialistState> {
   }
 
   Future<void> refresh() => loadTopSpecialists();
+
+  List<Doctor> _applyFavoriteFlags(List<Doctor> doctors, Set<String> ids) {
+    return doctors
+        .map(
+          (doctor) => doctor.copyWith(
+            isFavorite: ids.contains(doctor.documentId),
+          ),
+        )
+        .toList();
+  }
 }
