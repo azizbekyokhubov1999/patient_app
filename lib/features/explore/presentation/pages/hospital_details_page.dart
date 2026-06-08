@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_paths.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/di/app_dependencies.dart';
+import '../../../../core/utils/link_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../home/domain/entities/doctor.dart';
@@ -111,6 +112,7 @@ class HospitalDetailsPage extends StatelessWidget {
       create: (_) => HospitalDetailsCubit(
         initialHospital: hospital,
         doctorsRepository: AppDependencies.instance.doctorsRepository,
+        homeRepository: AppDependencies.instance.homeRepository,
       ),
       child: const _HospitalDetailsView(),
     );
@@ -444,8 +446,61 @@ class _HeaderInfo extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _HospitalStatItem(
+                  label: 'Doctors',
+                  value: '${hospital.totalDoctors}',
+                ),
+              ),
+              Expanded(
+                child: _HospitalStatItem(
+                  label: 'Patients',
+                  value: '${hospital.totalPatients}',
+                ),
+              ),
+              Expanded(
+                child: _HospitalStatItem(
+                  label: 'Reviews',
+                  value: '${hospital.totalReviews}',
+                ),
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _HospitalStatItem extends StatelessWidget {
+  const _HospitalStatItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      children: [
+        Text(
+          value,
+          style: textTheme.titleMedium?.copyWith(
+            color: AppColors.primaryText,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: textTheme.bodySmall?.copyWith(
+            color: AppColors.secondaryText,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -575,15 +630,9 @@ class _AboutTab extends StatelessWidget {
     final shownText = (!expanded && showReadMore)
         ? '${description.substring(0, _HospitalDetailsViewState._previewLength)}...'
         : description;
-    const orderedDays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
+    final hasContactInfo = hospital.phone.isNotEmpty ||
+        hospital.email.isNotEmpty ||
+        hospital.website.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
@@ -637,40 +686,27 @@ class _AboutTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          ...orderedDays.map((day) {
-            final value = hospital.timings[day] ?? 'Closed';
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      day,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          const SizedBox(height: 20),
           Text(
-            'Hospital Contact',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.w700,
+            hospital.workingHours.isNotEmpty
+                ? hospital.workingHours
+                : 'Contact clinic for timings',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.secondaryText,
+              height: 1.45,
             ),
           ),
-          const SizedBox(height: 10),
-          _ContactCard(contact: hospital.contactPerson),
+          if (hasContactInfo) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Hospital Contact',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.primaryText,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _HospitalContactSection(hospital: hospital),
+          ],
           const SizedBox(height: 20),
           Row(
             children: [
@@ -763,58 +799,101 @@ class _AboutTab extends StatelessWidget {
   }
 }
 
-class _ContactCard extends StatelessWidget {
-  const _ContactCard({required this.contact});
+class _HospitalContactSection extends StatelessWidget {
+  const _HospitalContactSection({required this.hospital});
 
-  final HospitalContactPerson contact;
+  final Hospital hospital;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
+    final rows = <Widget>[];
+
+    if (hospital.phone.isNotEmpty) {
+      rows.add(
+        _ContactInfoRow(
+          icon: LucideIcons.phone,
+          label: hospital.phone,
+          onTap: () => LinkLauncher.openExternalUrl('tel:${hospital.phone}'),
+        ),
+      );
+    }
+    if (hospital.email.isNotEmpty) {
+      rows.add(
+        _ContactInfoRow(
+          icon: LucideIcons.mail,
+          label: hospital.email,
+          onTap: () =>
+              LinkLauncher.openExternalUrl('mailto:${hospital.email}'),
+        ),
+      );
+    }
+    if (hospital.website.isNotEmpty) {
+      rows.add(
+        _ContactInfoRow(
+          icon: LucideIcons.globe,
+          label: hospital.website,
+          onTap: () {
+            var url = hospital.website;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+              url = 'https://$url';
+            }
+            LinkLauncher.openExternalUrl(url);
+          },
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          rows[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _ContactInfoRow extends StatelessWidget {
+  const _ContactInfoRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.neutral200),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.neutral200,
-            backgroundImage: NetworkImage(contact.avatarUrl),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.neutral200),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  contact.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.primaryText,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  contact.role,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.secondaryText,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          _CircleIconButton(
-            icon: LucideIcons.messageCircle,
-            onTap: () => debugPrint('Contact chat'),
-          ),
-          const SizedBox(width: 8),
-          _CircleIconButton(
-            icon: LucideIcons.phone,
-            onTap: () => debugPrint('Contact call'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -840,7 +919,15 @@ class _TreatmentsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          ListView.separated(
+          if (treatments.isEmpty)
+            Text(
+              'No treatments listed',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.secondaryText,
+              ),
+            )
+          else
+            ListView.separated(
             itemCount: treatments.length,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1161,7 +1248,7 @@ class _GalleryTab extends StatelessWidget {
           const SizedBox(height: 12),
           if (galleryImages.isEmpty)
             Text(
-              'No gallery images yet.',
+              'No gallery images available',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondaryText),

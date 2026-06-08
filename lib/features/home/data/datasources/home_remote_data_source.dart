@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/firestore_parsers.dart';
 import '../../domain/entities/appointment_preview.dart';
 import '../../domain/entities/doctor.dart';
 import '../../domain/entities/hospital.dart';
@@ -27,6 +28,9 @@ abstract class HomeRemoteDataSource {
 
   /// Upcoming appointments "See All" — all confirmed upcoming for patient.
   Future<List<AppointmentPreview>> getAllUpcomingAppointments(String uid);
+
+  /// Full hospital document for detail screens.
+  Future<Hospital?> getHospitalById(String id);
 }
 
 class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
@@ -155,6 +159,22 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
     return items;
   }
 
+  @override
+  Future<Hospital?> getHospitalById(String id) async {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) return null;
+
+    final doc = await _firestore.collection('hospitals').doc(trimmed).get();
+    if (!doc.exists) return null;
+
+    return Hospital.fromFirestore(
+      doc.data() ?? const {},
+      doc.id,
+      currentLat: _kDefaultUserLat,
+      currentLng: _kDefaultUserLng,
+    );
+  }
+
   List<Doctor> _mapDoctorDocs(
     Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
@@ -167,9 +187,9 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
-    final imageUrl = (data['imageUrl'] as String?)?.trim() ?? '';
-    final storedDistance = (data['distance'] as String?)?.trim() ?? '';
-    final storedEta = (data['eta'] as String?)?.trim() ?? '';
+    final imageUrl = FirestoreParsers.asString(data['imageUrl']).trim();
+    final storedDistance = FirestoreParsers.asString(data['distance']).trim();
+    final storedEta = FirestoreParsers.asString(data['eta']).trim();
 
     final hospital = Hospital.fromFirestore(
       data,

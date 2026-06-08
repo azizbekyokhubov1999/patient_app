@@ -2,6 +2,7 @@ import 'dart:math' show atan2, cos, pi, sin, sqrt;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/firestore_parsers.dart';
 import 'doctor.dart';
 import 'hospital_contact_person.dart';
 import 'hospital_review.dart';
@@ -29,6 +30,13 @@ class Hospital {
     this.mapImageUrl,
     this.specialties = const [],
     this.specialistIds = const [],
+    this.phone = '',
+    this.email = '',
+    this.website = '',
+    this.workingHours = '',
+    this.totalDoctors = 0,
+    this.totalPatients = 0,
+    this.totalReviews = 0,
     this.distanceInMiles = 0,
     this.durationInMinutes = 0,
     this.isFavorite = false,
@@ -62,6 +70,14 @@ class Hospital {
   /// Firestore doctor document ids linked to this hospital.
   final List<String> specialistIds;
 
+  final String phone;
+  final String email;
+  final String website;
+  final String workingHours;
+  final int totalDoctors;
+  final int totalPatients;
+  final int totalReviews;
+
   /// Canonical distance used for sorting and filters (derived if zero).
   final double distanceInMiles;
 
@@ -93,6 +109,13 @@ class Hospital {
     String? mapImageUrl,
     List<String>? specialties,
     List<String>? specialistIds,
+    String? phone,
+    String? email,
+    String? website,
+    String? workingHours,
+    int? totalDoctors,
+    int? totalPatients,
+    int? totalReviews,
     double? distanceInMiles,
     int? durationInMinutes,
     bool? isFavorite,
@@ -119,6 +142,13 @@ class Hospital {
       mapImageUrl: mapImageUrl ?? this.mapImageUrl,
       specialties: specialties ?? this.specialties,
       specialistIds: specialistIds ?? this.specialistIds,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      website: website ?? this.website,
+      workingHours: workingHours ?? this.workingHours,
+      totalDoctors: totalDoctors ?? this.totalDoctors,
+      totalPatients: totalPatients ?? this.totalPatients,
+      totalReviews: totalReviews ?? this.totalReviews,
       distanceInMiles: distanceInMiles ?? this.distanceInMiles,
       durationInMinutes: durationInMinutes ?? this.durationInMinutes,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -153,25 +183,40 @@ class Hospital {
     required double currentLat,
     required double currentLng,
   }) {
-    final rating = (data['rating'] as num?)?.toDouble() ?? 0;
-    final name = data['name'] as String? ?? 'Hospital';
-    final specialtiesRaw = data['specialties'];
-    final specialties = specialtiesRaw is List
-        ? specialtiesRaw.whereType<String>().toList()
-        : const <String>[];
+    final rating = FirestoreParsers.asDouble(data['rating']);
+    final nameRaw = FirestoreParsers.asString(data['name']);
+    final name = nameRaw.isNotEmpty ? nameRaw : 'Hospital';
 
-    final tags = specialties.isNotEmpty
-        ? specialties.join(', ')
-        : (data['tags'] as String? ?? '');
+    final specialties = FirestoreParsers.asStringList(data['specialties'])
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
 
-    final address = data['address'] as String? ?? '';
-    final description = data['description'] as String? ?? '';
+    final tagsRaw = FirestoreParsers.asString(data['tags']);
+    final tags = specialties.isNotEmpty ? specialties.join(', ') : tagsRaw;
 
-    List<String>? treatmentsParsed;
-    final treatmentsRaw = data['treatments'];
-    if (treatmentsRaw is List) {
-      treatmentsParsed = treatmentsRaw.whereType<String>().toList();
-    }
+    final address = FirestoreParsers.asString(data['address']);
+    final description = FirestoreParsers.asString(data['description']);
+    final treatments = FirestoreParsers.asStringList(data['treatments'])
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+    final galleryImages = FirestoreParsers.asStringList(data['galleryImages'])
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+    final specialistIds = FirestoreParsers.asStringList(data['specialistIds'])
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+
+    final phone = FirestoreParsers.asString(data['phone']).trim();
+    final email = FirestoreParsers.asString(data['email']).trim();
+    final website = FirestoreParsers.asString(data['website']).trim();
+    final workingHours = FirestoreParsers.asString(data['workingHours']).trim();
+    final totalDoctors = FirestoreParsers.asInt(data['totalDoctors']);
+    final totalPatients = FirestoreParsers.asInt(data['totalPatients']);
+    final totalReviews = FirestoreParsers.asInt(data['totalReviews']);
+    final isFavorite = FirestoreParsers.asBool(data['isFavorite']);
 
     final timingsRaw = data['timings'];
     final timingsParsed = timingsRaw is Map
@@ -183,22 +228,15 @@ class Hospital {
         : const <String, String>{};
 
     final contactParsed = HospitalContactPerson(
-      name: data['contactName'] as String? ?? '',
-      role: data['contactRole'] as String? ?? '',
-      avatarUrl: data['contactAvatarUrl'] as String? ?? '',
+      name: FirestoreParsers.asString(data['contactName']),
+      role: FirestoreParsers.asString(data['contactRole']),
+      avatarUrl: FirestoreParsers.asString(data['contactAvatarUrl']),
     );
 
-    List<String>? imagesParsed;
-    final imagesRaw = data['images'];
-    if (imagesRaw is List) {
-      imagesParsed = imagesRaw.whereType<String>().toList();
-    }
-
-    List<String>? galleryParsed;
-    final galleryRaw = data['galleryImages'];
-    if (galleryRaw is List) {
-      galleryParsed = galleryRaw.whereType<String>().toList();
-    }
+    final images = FirestoreParsers.asStringList(data['images'])
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
 
     final reviewsRaw = data['reviews'];
     final reviewsParsed = reviewsRaw is List
@@ -206,15 +244,15 @@ class Hospital {
             .whereType<Map>()
             .map(
               (m) => HospitalReview(
-                userName: m['userName'] as String? ?? '',
-                userAvatar: m['userAvatar'] as String? ?? '',
-                rating: (m['rating'] as num?)?.toDouble() ?? 0,
-                comment: m['comment'] as String? ?? '',
-                createdAt: m['createdAt'] as String? ?? '',
-                isVerified: m['isVerified'] as bool? ?? false,
-                reviewImages:
-                    (m['reviewImages'] as List?)?.whereType<String>().toList() ??
-                        const [],
+                userName: FirestoreParsers.asString(m['userName']),
+                userAvatar: FirestoreParsers.asString(m['userAvatar']),
+                rating: FirestoreParsers.asDouble(m['rating']),
+                comment: FirestoreParsers.asString(m['comment']),
+                createdAt: FirestoreParsers.asString(m['createdAt']),
+                isVerified: FirestoreParsers.asBool(m['isVerified']),
+                reviewImages: FirestoreParsers.asStringList(m['reviewImages'])
+                    .where((item) => item.isNotEmpty)
+                    .toList(growable: false),
               ),
             )
             .toList()
@@ -228,22 +266,23 @@ class Hospital {
         final raw = specsRaw[i];
         if (raw is! Map) continue;
         final mm = Map<String, dynamic>.from(raw);
-        final sid = mm['id'] as String? ?? 'spec_$i';
+        final sidRaw = FirestoreParsers.asString(mm['id']);
+        final sid = sidRaw.isNotEmpty ? sidRaw : 'spec_$i';
         out.add(
           Doctor(
             id: sid,
-            name: mm['name'] as String? ?? 'Doctor',
-            specialty: mm['specialty'] as String? ?? '',
-            rating: (mm['rating'] as num?)?.toDouble() ?? 0,
-            reviewsCount: (mm['reviewsCount'] as num?)?.toInt() ?? 0,
-            imageUrl: (mm['imageUrl'] as String?)?.trim() ?? '',
-            about: mm['about'] as String? ?? '',
-            patientsCount: (mm['patientsCount'] as num?)?.toInt() ?? 0,
-            experienceYears: (mm['experienceYears'] as num?)?.toInt() ?? 0,
+            name: FirestoreParsers.asString(mm['name'], fallback: 'Doctor'),
+            specialty: FirestoreParsers.asString(mm['specialty']),
+            rating: FirestoreParsers.asDouble(mm['rating']),
+            reviewsCount: FirestoreParsers.asInt(mm['reviewsCount']),
+            imageUrl: FirestoreParsers.asString(mm['imageUrl']).trim(),
+            about: FirestoreParsers.asString(mm['about']),
+            patientsCount: FirestoreParsers.asInt(mm['patientsCount']),
+            experienceYears: FirestoreParsers.asInt(mm['experienceYears']),
             workingHours: const [],
-            address: mm['address'] as String? ?? '',
-            latitude: (mm['latitude'] as num?)?.toDouble() ?? 0,
-            longitude: (mm['longitude'] as num?)?.toDouble() ?? 0,
+            address: FirestoreParsers.asString(mm['address']),
+            latitude: FirestoreParsers.asDouble(mm['latitude']),
+            longitude: FirestoreParsers.asDouble(mm['longitude']),
             patientReviews: const [],
             isFavorite: false,
           ),
@@ -252,31 +291,21 @@ class Hospital {
       specialistsParsed = out;
     }
 
-    List<String> specialistIdsParsed = const [];
-    final specialistIdsRaw = data['specialistIds'];
-    if (specialistIdsRaw is List) {
-      specialistIdsParsed = specialistIdsRaw
-          .map((item) => item.toString().trim())
-          .where((id) => id.isNotEmpty)
-          .toList(growable: false);
-    }
+    final hospLat = FirestoreParsers.asDouble(data['latitude']);
+    final hospLng = FirestoreParsers.asDouble(data['longitude']);
 
-    final hospLat = (data['latitude'] as num?)?.toDouble() ?? 0;
-    final hospLng = (data['longitude'] as num?)?.toDouble() ?? 0;
-
-    var miles =
-        (data['distanceInMiles'] as num?)?.toDouble();
+    var miles = FirestoreParsers.asNum(data['distanceInMiles'])?.toDouble();
     miles ??=
         hospLat.abs() > 1e-6 || hospLng.abs() > 1e-6
             ? _haversineMiles(currentLat, currentLng, hospLat, hospLng)
             : null;
 
-    var durationMinutes = (data['durationInMinutes'] as num?)?.toInt() ?? 0;
-    final etaStored = data['eta'] as String? ?? '';
+    var durationMinutes = FirestoreParsers.asInt(data['durationInMinutes']);
+    final etaStored = FirestoreParsers.asString(data['eta']);
 
     double milesNonNull = miles ?? 0;
     if (milesNonNull <= 0) {
-      final distStr = data['distance'] as String? ?? '';
+      final distStr = FirestoreParsers.asString(data['distance']);
       final mMatch = RegExp(r'([\d.]+)').firstMatch(distStr);
       milesNonNull = double.tryParse(mMatch?.group(1) ?? '') ?? 0;
     }
@@ -288,15 +317,19 @@ class Hospital {
           (((milesNonNull / 25) * 60).round()).clamp(1, 240);
     }
 
-    final imageUrl = data['imageUrl'] as String? ??
-        (imagesParsed != null && imagesParsed.isNotEmpty
-            ? imagesParsed.first
-            : '');
-    final mapImageUrl = data['mapImageUrl'] as String?;
+    final imageUrlRaw = FirestoreParsers.asString(data['imageUrl']);
+    final imageUrl = imageUrlRaw.isNotEmpty
+        ? imageUrlRaw
+        : (images.isNotEmpty ? images.first : '');
 
+    final mapImageUrlRaw = FirestoreParsers.asString(data['mapImageUrl']);
+    final mapImageUrl =
+        mapImageUrlRaw.isEmpty ? null : mapImageUrlRaw;
+
+    final distanceStored = FirestoreParsers.asString(data['distance']);
     final distanceLabel = milesNonNull > 0
         ? '${milesNonNull.toStringAsFixed(1)} Miles'
-        : ((data['distance'] as String?) ?? '');
+        : distanceStored;
     final etaLabel =
         durationMinutes > 0 ? '$durationMinutes Min' : etaStored;
 
@@ -314,21 +347,27 @@ class Hospital {
               ? imageUrl
               : 'https://picsum.photos/400/200?hospital=$docId',
       description: description,
-      treatments:
-          treatmentsParsed ?? const [],
+      treatments: treatments,
       specialists: specialistsParsed ?? const [],
-      specialistIds: specialistIdsParsed,
+      specialistIds: specialistIds,
       timings: timingsParsed,
       contactPerson: contactParsed,
-      images: imagesParsed ?? const [],
-      galleryImages: galleryParsed ?? imagesParsed ?? const [],
+      images: images,
+      galleryImages: galleryImages,
       reviews: reviewsParsed,
+      phone: phone,
+      email: email,
+      website: website,
+      workingHours: workingHours,
+      totalDoctors: totalDoctors,
+      totalPatients: totalPatients,
+      totalReviews: totalReviews,
       latitude: hospLat,
       longitude: hospLng,
       mapImageUrl: mapImageUrl,
       distanceInMiles: milesNonNull,
       durationInMinutes: durationMinutes > 0 ? durationMinutes : 0,
-      isFavorite: false,
+      isFavorite: isFavorite,
     );
   }
 }

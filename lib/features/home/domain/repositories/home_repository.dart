@@ -14,4 +14,6 @@ abstract class HomeRepository {
   Future<List<AppointmentPreview>> getUpcomingAppointments(String uid);
 
   Future<List<AppointmentPreview>> getAllUpcomingAppointments(String uid);
+
+  Future<Hospital?> getHospitalById(String id);
 }

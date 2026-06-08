@@ -4,6 +4,7 @@ import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_review.dart';
 import '../../../home/domain/repositories/doctors_repository.dart';
+import '../../../home/domain/repositories/home_repository.dart';
 import 'hospital_details_state.dart';
 
 class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
@@ -14,7 +15,9 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
   HospitalDetailsCubit({
     required Hospital initialHospital,
     required DoctorsRepository doctorsRepository,
+    required HomeRepository homeRepository,
   })  : _doctorsRepository = doctorsRepository,
+        _homeRepository = homeRepository,
         super(
           HospitalDetailsState(
             hospital: initialHospital,
@@ -23,10 +26,28 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
             activeReviewFilters: {filterVerified, filterLatest},
           ),
         ) {
+    loadHospitalDetails();
     loadSpecialists();
   }
 
   final DoctorsRepository _doctorsRepository;
+  final HomeRepository _homeRepository;
+
+  Future<void> loadHospitalDetails() async {
+    try {
+      final hospital = await _homeRepository.getHospitalById(state.hospital.id);
+      if (hospital == null) return;
+
+      emit(
+        state.copyWith(
+          hospital: hospital.copyWith(
+            specialists: state.hospital.specialists,
+            isFavorite: state.hospital.isFavorite,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
 
   Future<void> loadSpecialists() async {
     emit(state.copyWith(isLoadingSpecialists: true));

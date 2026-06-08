@@ -28,4 +28,7 @@ class HomeRepositoryImpl implements HomeRepository {
   @override
   Future<List<AppointmentPreview>> getAllUpcomingAppointments(String uid) =>
       _remote.getAllUpcomingAppointments(uid);
+
+  @override
+  Future<Hospital?> getHospitalById(String id) => _remote.getHospitalById(id);
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/utils/firestore_parsers.dart';
 import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_contact_person.dart';
 
@@ -133,9 +134,9 @@ class ExploreRemoteDataSourceImpl implements ExploreRemoteDataSource {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
-    final imageUrl = (data['imageUrl'] as String?)?.trim() ?? '';
-    final storedDistance = (data['distance'] as String?)?.trim() ?? '';
-    final storedEta = (data['eta'] as String?)?.trim() ?? '';
+    final imageUrl = FirestoreParsers.asString(data['imageUrl']).trim();
+    final storedDistance = FirestoreParsers.asString(data['distance']).trim();
+    final storedEta = FirestoreParsers.asString(data['eta']).trim();
 
     final hospital = Hospital.fromFirestore(
       data,
