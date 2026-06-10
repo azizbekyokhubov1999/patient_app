@@ -6,6 +6,7 @@ class Doctor {
     this.id,
     required this.name,
     required this.specialty,
+    this.hospitalName = '',
     required this.rating,
     required this.reviewsCount,
     required this.imageUrl,
@@ -27,6 +28,7 @@ class Doctor {
 
   final String name;
   final String specialty;
+  final String hospitalName;
   final double rating;
   final int reviewsCount;
   final String imageUrl;
@@ -48,6 +50,7 @@ class Doctor {
     String? id,
     String? name,
     String? specialty,
+    String? hospitalName,
     double? rating,
     int? reviewsCount,
     String? imageUrl,
@@ -67,6 +70,7 @@ class Doctor {
       id: id ?? this.id,
       name: name ?? this.name,
       specialty: specialty ?? this.specialty,
+      hospitalName: hospitalName ?? this.hospitalName,
       rating: rating ?? this.rating,
       reviewsCount: reviewsCount ?? this.reviewsCount,
       imageUrl: imageUrl ?? this.imageUrl,

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../booking/presentation/utils/booking_navigation.dart';
+import '../../../../core/constants/app_paths.dart';
 import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/link_launcher.dart';
@@ -29,6 +30,7 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
   bool _aboutExpanded = false;
   bool _favorite = false;
   bool _favoriteBusy = false;
+  bool _hospitalNavBusy = false;
   late Doctor _doctor;
   StreamSubscription<bool>? _favoriteSubscription;
   StreamSubscription<Doctor?>? _doctorSubscription;
@@ -126,6 +128,41 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
     }
   }
 
+  Future<void> _openHospitalDetails() async {
+    if (_hospitalNavBusy) return;
+
+    final hospitalName = _d.hospitalName.trim();
+    if (hospitalName.isEmpty) return;
+
+    setState(() => _hospitalNavBusy = true);
+
+    try {
+      final hospital = await AppDependencies.instance.homeRepository
+          .getHospitalByName(hospitalName);
+      if (!mounted) return;
+
+      if (hospital != null) {
+        context.push(AppPaths.hospitalDetails, extra: hospital);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hospital information not available'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hospital information not available'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _hospitalNavBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     _favoriteSubscription?.cancel();
@@ -200,11 +237,6 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                       ),
                     ),
                     _CircleHeaderIcon(
-                      icon: LucideIcons.share,
-                      onTap: () => debugPrint('Share tapped'),
-                    ),
-                    const SizedBox(width: 8),
-                    _CircleHeaderIcon(
                       icon: LucideIcons.heart,
                       iconColor: _favorite ? Colors.red : Colors.grey,
                       iconFill: _favorite ? 1 : 0,
@@ -243,6 +275,28 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                               ),
                             ),
                           ),
+                          if (_d.hospitalName.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.building2,
+                                  size: 14,
+                                  color: AppColors.secondaryText,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _d.hospitalName,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      fontSize: 13,
+                                      color: AppColors.secondaryText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,29 +521,12 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     ),
                   ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Address',
-                        style: textTheme.titleLarge?.copyWith(
-                          color: AppColors.primaryText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () =>
-                          debugPrint('View on map — replace with maps later'),
-                      child: Text(
-                        'View on Map',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Address',
+                  style: textTheme.titleLarge?.copyWith(
+                    color: AppColors.primaryText,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -514,26 +551,48 @@ class _DoctorDetailsPageState extends State<DoctorDetailsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.network(
-                          _d.mapImageUrl ??
-                              'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, _) =>
-                              Container(color: AppColors.stroke),
-                        ),
-                        const Center(child: _MapPinMarker()),
-                      ],
+                if (_d.hospitalName.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: _hospitalNavBusy ? null : _openHospitalDetails,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.building2,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _d.hospitalName,
+                              style: textTheme.bodySmall?.copyWith(
+                                fontSize: 13,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (_hospitalNavBusy)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            const Icon(
+                              LucideIcons.chevronRight,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 28),
                 Row(
                   children: [
@@ -1063,30 +1122,6 @@ class _ReviewCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _MapPinMarker extends StatelessWidget {
-  const _MapPinMarker();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Icon(LucideIcons.mapPin, color: AppColors.white, size: 22),
     );
   }
 }

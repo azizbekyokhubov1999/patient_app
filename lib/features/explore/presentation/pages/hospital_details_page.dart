@@ -206,8 +206,6 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
                         _HeaderInfo(hospital: h),
                         const SizedBox(height: 14),
                         const Divider(height: 1, color: AppColors.neutral200),
-                        _ActionRow(hospital: h),
-                        const Divider(height: 1, color: AppColors.neutral200),
                         _Tabs(
                           selectedIndex: state.selectedTabIndex,
                           onTap: (index) => context
@@ -237,18 +235,11 @@ class _HospitalDetailsViewState extends State<_HospitalDetailsView> {
                                   .read<HospitalDetailsCubit>()
                                   .filteredReviews,
                               activeFilters: state.activeReviewFilters,
-                              onTapAddReview: () async {
-                                final updatedHospital = await context
-                                    .push<Hospital>(
-                                      AppPaths.leaveReviewHospital,
-                                      extra: h,
-                                    );
-                                if (updatedHospital != null &&
-                                    context.mounted) {
-                                  context
-                                      .read<HospitalDetailsCubit>()
-                                      .updateHospital(updatedHospital);
-                                }
+                              onTapAddReview: () {
+                                context.push(
+                                  AppPaths.leaveReviewHospital,
+                                  extra: h,
+                                );
                               },
                               onSearchChanged: context
                                   .read<HospitalDetailsCubit>()
@@ -279,79 +270,32 @@ class _TopImageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final images = hospital.images.isNotEmpty
-        ? hospital.images
-        : [hospital.imageUrl];
-    final thumbs = images.take(5).toList();
-    while (thumbs.length < 5) {
-      thumbs.add(hospital.imageUrl);
-    }
+    final imageUrl = hospital.images.isNotEmpty
+        ? hospital.images.first
+        : hospital.imageUrl;
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 210,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                images.first,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, _) =>
-                    const ColoredBox(color: AppColors.neutral200),
-              ),
-              Positioned(
-                left: 16,
-                top: 14,
-                child: _CircleIconButton(
-                  icon: LucideIcons.arrowLeft,
-                  onTap: () => context.pop(),
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: 210,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, _) =>
+                const ColoredBox(color: AppColors.neutral200),
           ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 44,
-          child: Row(
-            children: List.generate(thumbs.length, (index) {
-              final isLast = index == thumbs.length - 1;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 0 : 2),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        thumbs[index],
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, _) =>
-                            const ColoredBox(color: AppColors.neutral200),
-                      ),
-                      if (isLast)
-                        Container(
-                          color: AppColors.primaryText.withValues(alpha: 0.35),
-                          child: Center(
-                            child: Text(
-                              '+10',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: AppColors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+          Positioned(
+            left: 16,
+            top: 14,
+            child: _CircleIconButton(
+              icon: LucideIcons.arrowLeft,
+              onTap: () => context.pop(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -515,44 +459,6 @@ void _openGetDirection(BuildContext context, Hospital hospital) {
       hospitalAddress: hospital.address,
     ),
   );
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.hospital});
-
-  final Hospital hospital;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _ActionItem(
-            icon: LucideIcons.globe,
-            label: 'Website',
-            onTap: () => debugPrint('Open website: ${hospital.name}'),
-          ),
-          _ActionItem(
-            icon: LucideIcons.map,
-            label: 'Direction',
-            onTap: () => _openGetDirection(context, hospital),
-          ),
-          _ActionItem(
-            icon: LucideIcons.messageSquare,
-            label: 'Message',
-            onTap: () => debugPrint('Message: ${hospital.name}'),
-          ),
-          _ActionItem(
-            icon: LucideIcons.send,
-            label: 'Share',
-            onTap: () => debugPrint('Share: ${hospital.name}'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _Tabs extends StatelessWidget {
@@ -1474,7 +1380,7 @@ class _ReviewsTab extends StatelessWidget {
           const SizedBox(height: 12),
           if (reviews.isEmpty)
             Text(
-              'No reviews found.',
+              'No reviews yet',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.secondaryText),
@@ -1602,7 +1508,21 @@ class _HospitalReviewCardState extends State<_HospitalReviewCard> {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: AppColors.neutral200,
-                    backgroundImage: NetworkImage(review.userAvatar),
+                    backgroundImage: review.userAvatar.isNotEmpty
+                        ? NetworkImage(review.userAvatar)
+                        : null,
+                    child: review.userAvatar.isEmpty
+                        ? Text(
+                            _initialsFromName(review.userName),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: AppColors.primaryText,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          )
+                        : null,
                   ),
                   if (review.isVerified)
                     const Positioned(
@@ -1712,47 +1632,6 @@ class _HospitalReviewCardState extends State<_HospitalReviewCard> {
               },
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionItem extends StatelessWidget {
-  const _ActionItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.neutral200),
-            ),
-            child: Icon(icon, size: 20, color: AppColors.primaryText),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: AppColors.primaryText),
-          ),
         ],
       ),
     );
@@ -1941,4 +1820,12 @@ class _SpecialistSelectionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _initialsFromName(String name) {
+  final parts =
+      name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first[0].toUpperCase();
+  return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
 }

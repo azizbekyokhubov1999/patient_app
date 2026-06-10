@@ -31,6 +31,7 @@ abstract final class DoctorModel {
           ? (data['name'] as String).trim()
           : 'Doctor',
       specialty: (data['specialty'] as String?)?.trim() ?? '',
+      hospitalName: (data['hospitalName'] as String?)?.trim() ?? '',
       rating: rating,
       reviewsCount: reviewsCount,
       imageUrl: imageUrl,

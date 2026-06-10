@@ -1,82 +1,126 @@
+import 'dart:developer' as developer;
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../home/domain/entities/doctor.dart';
-import '../../../home/domain/entities/doctor_review.dart';
 import '../../../home/domain/entities/hospital.dart';
-import '../../../home/domain/entities/hospital_review.dart';
+import '../../../home/domain/repositories/home_repository.dart';
+import '../../../profile/domain/repositories/profile_repository.dart';
 import 'leave_review_hospital_state.dart';
 
 class LeaveReviewHospitalCubit extends Cubit<LeaveReviewHospitalState> {
-  LeaveReviewHospitalCubit(this.hospital)
-    : super(
-        LeaveReviewHospitalState(
-          rating: 5,
-          selectedSpecialist: hospital.specialists.isNotEmpty
-              ? hospital.specialists.first
-              : null,
-          reviewText: '',
-          isSubmitting: false,
-        ),
-      );
+  LeaveReviewHospitalCubit({
+    required this.hospital,
+    required HomeRepository homeRepository,
+    required ProfileRepository profileRepository,
+    FirebaseAuth? auth,
+  })  : _homeRepository = homeRepository,
+        _profileRepository = profileRepository,
+        _auth = auth ?? FirebaseAuth.instance,
+        super(
+          const LeaveReviewHospitalState(
+            rating: 0,
+            reviewText: '',
+            isSubmitting: false,
+          ),
+        );
 
   final Hospital hospital;
+  final HomeRepository _homeRepository;
+  final ProfileRepository _profileRepository;
+  final FirebaseAuth _auth;
 
   void setRating(int value) {
-    emit(state.copyWith(rating: value.clamp(1, 5)));
-  }
-
-  void setSpecialist(Doctor doctor) {
-    emit(state.copyWith(selectedSpecialist: doctor));
+    emit(state.copyWith(rating: value.clamp(1, 5), submitError: null));
   }
 
   void setReviewText(String value) {
-    emit(state.copyWith(reviewText: value));
+    emit(state.copyWith(reviewText: value, submitError: null));
   }
 
-  Hospital submitReview() {
-    final comment = state.reviewText.trim().isEmpty
-        ? 'Great experience with the hospital team and overall service quality.'
-        : state.reviewText.trim();
+  Future<void> submitReview() async {
+    if (state.isSubmitting) return;
 
-    final newHospitalReview = HospitalReview(
-      userName: 'You',
-      userAvatar:
-          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80',
-      rating: state.rating.toDouble(),
-      comment: comment,
-      createdAt: 'just now',
-      isVerified: true,
-    );
-
-    final specialist = state.selectedSpecialist;
-    if (specialist == null) {
-      return hospital.copyWith(
-        reviews: [newHospitalReview, ...hospital.reviews],
+    if (state.rating <= 0) {
+      emit(
+        state.copyWith(
+          submitError: 'Please select a rating',
+          submitSuccess: false,
+        ),
       );
+      return;
     }
 
-    final specialistReview = DoctorReview(
-      authorName: 'You',
-      avatarUrl: newHospitalReview.userAvatar,
-      verified: true,
-      timeAgo: 'just now',
-      text: comment,
-      rating: state.rating.toDouble(),
-    );
-
-    final updatedSpecialists = hospital.specialists.map((d) {
-      if (d.name != specialist.name) return d;
-      return d.copyWith(
-        patientReviews: [specialistReview, ...d.patientReviews],
-        reviewsCount: d.reviewsCount + 1,
-        rating:
-            ((d.rating * d.reviewsCount) + state.rating) / (d.reviewsCount + 1),
+    final hospitalId = hospital.id.trim();
+    if (hospitalId.isEmpty) {
+      emit(
+        state.copyWith(
+          submitError: 'Failed to submit review. Please try again.',
+          submitSuccess: false,
+        ),
       );
-    }).toList();
+      return;
+    }
 
-    return hospital.copyWith(
-      reviews: [newHospitalReview, ...hospital.reviews],
-      specialists: updatedSpecialists,
+    final user = _auth.currentUser;
+    if (user == null) {
+      emit(
+        state.copyWith(
+          submitError: 'Failed to submit review. Please try again.',
+          submitSuccess: false,
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        isSubmitting: true,
+        submitSuccess: false,
+        submitError: null,
+      ),
     );
+
+    try {
+      final profile = await _profileRepository.getUserProfile(user.uid);
+      final userName = profile?.displayName.trim().isNotEmpty == true
+          ? profile!.displayName.trim()
+          : (user.displayName?.trim().isNotEmpty == true
+              ? user.displayName!.trim()
+              : 'Patient');
+      final userPhoto = profile?.photoUrl.trim().isNotEmpty == true
+          ? profile!.photoUrl.trim()
+          : (user.photoURL?.trim() ?? '');
+
+      await _homeRepository.submitHospitalReview(
+        hospitalId: hospitalId,
+        userId: user.uid,
+        userName: userName,
+        userPhoto: userPhoto,
+        rating: state.rating.toDouble(),
+        comment: state.reviewText.trim(),
+      );
+
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          submitSuccess: true,
+          submitError: null,
+        ),
+      );
+    } catch (e, st) {
+      developer.log('submitHospitalReview error', error: e, stackTrace: st);
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          submitSuccess: false,
+          submitError: 'Failed to submit review. Please try again.',
+        ),
+      );
+    }
+  }
+
+  void clearSubmitStatus() {
+    emit(state.copyWith(submitSuccess: false, submitError: null));
   }
 }

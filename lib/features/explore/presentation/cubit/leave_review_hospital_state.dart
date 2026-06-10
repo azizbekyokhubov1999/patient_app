@@ -1,29 +1,31 @@
-import '../../../home/domain/entities/doctor.dart';
-
 class LeaveReviewHospitalState {
   const LeaveReviewHospitalState({
     required this.rating,
-    required this.selectedSpecialist,
     required this.reviewText,
     required this.isSubmitting,
+    this.submitSuccess = false,
+    this.submitError,
   });
 
   final int rating;
-  final Doctor? selectedSpecialist;
   final String reviewText;
   final bool isSubmitting;
+  final bool submitSuccess;
+  final String? submitError;
 
   LeaveReviewHospitalState copyWith({
     int? rating,
-    Doctor? selectedSpecialist,
     String? reviewText,
     bool? isSubmitting,
+    bool? submitSuccess,
+    String? submitError,
   }) {
     return LeaveReviewHospitalState(
       rating: rating ?? this.rating,
-      selectedSpecialist: selectedSpecialist ?? this.selectedSpecialist,
       reviewText: reviewText ?? this.reviewText,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      submitSuccess: submitSuccess ?? this.submitSuccess,
+      submitError: submitError,
     );
   }
 }

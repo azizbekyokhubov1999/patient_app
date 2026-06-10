@@ -215,7 +215,10 @@ class Hospital {
     final workingHours = FirestoreParsers.asString(data['workingHours']).trim();
     final totalDoctors = FirestoreParsers.asInt(data['totalDoctors']);
     final totalPatients = FirestoreParsers.asInt(data['totalPatients']);
-    final totalReviews = FirestoreParsers.asInt(data['totalReviews']);
+    final reviewsCount = FirestoreParsers.asInt(data['reviewsCount']);
+    final totalReviewsField = FirestoreParsers.asInt(data['totalReviews']);
+    final totalReviews =
+        reviewsCount > 0 ? reviewsCount : totalReviewsField;
     final isFavorite = FirestoreParsers.asBool(data['isFavorite']);
 
     final timingsRaw = data['timings'];

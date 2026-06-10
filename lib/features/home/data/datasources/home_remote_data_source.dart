@@ -6,6 +6,7 @@ import '../../domain/entities/doctor.dart';
 import '../../domain/entities/hospital.dart';
 import '../../domain/entities/hospital_contact_person.dart';
 import '../models/doctor_model.dart';
+import '../models/review_model.dart';
 
 /// Default map center (same as Explore tab).
 const double _kDefaultUserLat = 40.7128;
@@ -31,6 +32,21 @@ abstract class HomeRemoteDataSource {
 
   /// Full hospital document for detail screens.
   Future<Hospital?> getHospitalById(String id);
+
+  Future<Hospital?> getHospitalByName(String name);
+
+  Future<void> submitHospitalReview({
+    required String hospitalId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  });
+
+  Stream<List<ReviewModel>> getHospitalReviews(String hospitalId);
+
+  Stream<Hospital?> watchHospitalById(String id);
 }
 
 class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
@@ -172,6 +188,115 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       doc.id,
       currentLat: _kDefaultUserLat,
       currentLng: _kDefaultUserLng,
+    );
+  }
+
+  @override
+  Future<Hospital?> getHospitalByName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return null;
+
+    final snapshot = await _firestore
+        .collection('hospitals')
+        .where('name', isEqualTo: trimmed)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return null;
+
+    final doc = snapshot.docs.first;
+    return Hospital.fromFirestore(
+      doc.data(),
+      doc.id,
+      currentLat: _kDefaultUserLat,
+      currentLng: _kDefaultUserLng,
+    );
+  }
+
+  @override
+  Future<void> submitHospitalReview({
+    required String hospitalId,
+    required String userId,
+    required String userName,
+    required String userPhoto,
+    required double rating,
+    required String comment,
+  }) async {
+    final trimmedHospitalId = hospitalId.trim();
+    if (trimmedHospitalId.isEmpty) {
+      throw ArgumentError(
+        'hospitalId must be a non-empty Firestore document id',
+      );
+    }
+
+    final hospitalRef =
+        _firestore.collection('hospitals').doc(trimmedHospitalId);
+    final reviewRef = hospitalRef.collection('reviews').doc();
+
+    await reviewRef.set({
+      'userId': userId,
+      'userName': userName,
+      'userPhoto': userPhoto,
+      'rating': rating,
+      'comment': comment,
+      'createdAt': Timestamp.now(),
+    });
+
+    final reviewsSnap = await hospitalRef.collection('reviews').get();
+
+    var sum = 0.0;
+    final count = reviewsSnap.docs.length;
+    for (final doc in reviewsSnap.docs) {
+      sum += FirestoreParsers.asDouble(doc.data()['rating']);
+    }
+
+    final averageRating = count > 0
+        ? double.parse((sum / count).toStringAsFixed(1))
+        : 0.0;
+
+    await hospitalRef.update({
+      'rating': averageRating,
+      'reviewsCount': count,
+    });
+  }
+
+  @override
+  Stream<List<ReviewModel>> getHospitalReviews(String hospitalId) {
+    final trimmedId = hospitalId.trim();
+    if (trimmedId.isEmpty) {
+      return Stream<List<ReviewModel>>.value(const []);
+    }
+
+    return _firestore
+        .collection('hospitals')
+        .doc(trimmedId)
+        .collection('reviews')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(ReviewModel.fromFirestore)
+              .toList(growable: false),
+        );
+  }
+
+  @override
+  Stream<Hospital?> watchHospitalById(String id) {
+    final trimmedId = id.trim();
+    if (trimmedId.isEmpty) {
+      return Stream<Hospital?>.value(null);
+    }
+
+    return _firestore.collection('hospitals').doc(trimmedId).snapshots().map(
+      (snapshot) {
+        if (!snapshot.exists) return null;
+        return Hospital.fromFirestore(
+          snapshot.data() ?? const {},
+          snapshot.id,
+          currentLat: _kDefaultUserLat,
+          currentLng: _kDefaultUserLng,
+        );
+      },
     );
   }
 

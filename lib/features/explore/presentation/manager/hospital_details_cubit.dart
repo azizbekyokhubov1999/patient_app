@@ -1,5 +1,10 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+
+import '../../../home/data/models/review_model.dart';
 import '../../../home/domain/entities/doctor.dart';
 import '../../../home/domain/entities/hospital.dart';
 import '../../../home/domain/entities/hospital_review.dart';
@@ -16,8 +21,10 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
     required Hospital initialHospital,
     required DoctorsRepository doctorsRepository,
     required HomeRepository homeRepository,
+    FirebaseAuth? auth,
   })  : _doctorsRepository = doctorsRepository,
         _homeRepository = homeRepository,
+        _auth = auth ?? FirebaseAuth.instance,
         super(
           HospitalDetailsState(
             hospital: initialHospital,
@@ -28,10 +35,16 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
         ) {
     loadHospitalDetails();
     loadSpecialists();
+    _listenToReviews();
+    _listenToHospitalUpdates();
   }
 
   final DoctorsRepository _doctorsRepository;
   final HomeRepository _homeRepository;
+  final FirebaseAuth _auth;
+
+  StreamSubscription<List<ReviewModel>>? _reviewsSubscription;
+  StreamSubscription<Hospital?>? _hospitalSubscription;
 
   Future<void> loadHospitalDetails() async {
     try {
@@ -72,6 +85,36 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
     }
   }
 
+  void _listenToReviews() {
+    final hospitalId = state.hospital.id.trim();
+    if (hospitalId.isEmpty) return;
+
+    _reviewsSubscription?.cancel();
+    _reviewsSubscription = _homeRepository
+        .getHospitalReviews(hospitalId)
+        .listen((reviews) => emit(state.copyWith(reviews: reviews)));
+  }
+
+  void _listenToHospitalUpdates() {
+    final hospitalId = state.hospital.id.trim();
+    if (hospitalId.isEmpty) return;
+
+    _hospitalSubscription?.cancel();
+    _hospitalSubscription = _homeRepository.watchHospitalById(hospitalId).listen(
+      (hospital) {
+        if (hospital == null) return;
+        emit(
+          state.copyWith(
+            hospital: hospital.copyWith(
+              specialists: state.hospital.specialists,
+              isFavorite: state.hospital.isFavorite,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void setTab(int index) {
     if (index == state.selectedTabIndex) return;
     emit(state.copyWith(selectedTabIndex: index));
@@ -98,7 +141,10 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
   }
 
   List<HospitalReview> get filteredReviews {
-    var list = List<HospitalReview>.from(state.hospital.reviews);
+    final currentUserId = _auth.currentUser?.uid;
+    var list = state.reviews
+        .map((review) => _toHospitalReview(review, currentUserId))
+        .toList();
 
     if (state.activeReviewFilters.contains(filterVerified)) {
       list = list.where((r) => r.isVerified).toList();
@@ -124,5 +170,41 @@ class HospitalDetailsCubit extends Cubit<HospitalDetailsState> {
     }
 
     return list;
+  }
+
+  HospitalReview _toHospitalReview(ReviewModel review, String? currentUserId) {
+    final isCurrentUser =
+        currentUserId != null && review.userId == currentUserId;
+
+    return HospitalReview(
+      userName: isCurrentUser ? 'You' : review.userName,
+      userAvatar: review.userPhoto,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: _formatReviewDate(review.createdAt),
+      isVerified: isCurrentUser,
+    );
+  }
+
+  String _formatReviewDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 1) return 'just now';
+    if (difference.inHours < 24) {
+      if (difference.inHours < 1) {
+        return '${difference.inMinutes}m ago';
+      }
+      return '${difference.inHours}h ago';
+    }
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return DateFormat('MMM d, yyyy').format(date);
+  }
+
+  @override
+  Future<void> close() {
+    _reviewsSubscription?.cancel();
+    _hospitalSubscription?.cancel();
+    return super.close();
   }
 }

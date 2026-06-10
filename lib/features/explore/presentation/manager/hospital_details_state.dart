@@ -1,3 +1,4 @@
+import '../../../home/data/models/review_model.dart';
 import '../../../home/domain/entities/hospital.dart';
 
 class HospitalDetailsState {
@@ -7,6 +8,7 @@ class HospitalDetailsState {
     required this.reviewQuery,
     required this.activeReviewFilters,
     this.isLoadingSpecialists = false,
+    this.reviews = const [],
   });
 
   final Hospital hospital;
@@ -14,6 +16,7 @@ class HospitalDetailsState {
   final String reviewQuery;
   final Set<String> activeReviewFilters;
   final bool isLoadingSpecialists;
+  final List<ReviewModel> reviews;
 
   HospitalDetailsState copyWith({
     Hospital? hospital,
@@ -21,6 +24,7 @@ class HospitalDetailsState {
     String? reviewQuery,
     Set<String>? activeReviewFilters,
     bool? isLoadingSpecialists,
+    List<ReviewModel>? reviews,
   }) {
     return HospitalDetailsState(
       hospital: hospital ?? this.hospital,
@@ -28,6 +32,7 @@ class HospitalDetailsState {
       reviewQuery: reviewQuery ?? this.reviewQuery,
       activeReviewFilters: activeReviewFilters ?? this.activeReviewFilters,
       isLoadingSpecialists: isLoadingSpecialists ?? this.isLoadingSpecialists,
+      reviews: reviews ?? this.reviews,
     );
   }
 }
