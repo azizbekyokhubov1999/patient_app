@@ -162,7 +162,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 22),
                       _SectionTitle(
-                        title: 'Nearby Hospitals',
+                        title: 'Hospitals',
                         onTapSeeAll: () =>
                             context.push(AppPaths.nearbyHospitals),
                       ),
@@ -187,7 +187,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 22),
                       _SectionTitle(
-                        title: 'Top Specialist',
+                        title: 'Specialists',
                         onTapSeeAll: () => context.push(AppPaths.topSpecialist),
                       ),
                       const SizedBox(height: 12),
@@ -740,44 +740,6 @@ class _HospitalCardState extends State<_HospitalCard> {
                       Expanded(
                         child: Text(
                           widget.hospital.address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        LucideIcons.clock,
-                        color: AppColors.secondaryText,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          widget.hospital.eta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        LucideIcons.navigation,
-                        color: AppColors.primary,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          widget.hospital.distance,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.bodySmall?.copyWith(

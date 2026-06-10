@@ -27,21 +27,6 @@ class HospitalCard extends StatelessWidget {
     return hospital.tags;
   }
 
-  int get _durationMinutes {
-    if (hospital.durationInMinutes > 0) return hospital.durationInMinutes;
-    final match = RegExp(r'(\d+)').firstMatch(hospital.eta);
-    return int.tryParse(match?.group(1) ?? '') ?? 0;
-  }
-
-  double get _distanceMilesLine {
-    if (hospital.distanceInMiles > 0) return hospital.distanceInMiles;
-    final match = RegExp(r'([\d.]+)').firstMatch(hospital.distance);
-    return double.tryParse(match?.group(1) ?? '') ?? 0;
-  }
-
-  String get _etaLine =>
-      '$_durationMinutes Min • ${_distanceMilesLine.toStringAsFixed(1)} Miles';
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -183,51 +168,24 @@ class HospitalCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.location_on_rounded,
-                                      size: 14,
-                                      color: AppColors.secondaryText,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        hospital.address,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.secondaryText,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  size: 14,
+                                  color: AppColors.secondaryText,
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.access_time_rounded,
-                                      size: 14,
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    hospital.address,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
                                       color: AppColors.secondaryText,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        _etaLine,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.secondaryText,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),

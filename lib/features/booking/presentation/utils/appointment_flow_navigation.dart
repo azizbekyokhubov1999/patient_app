@@ -46,6 +46,7 @@ GetDirectionArgs getDirectionArgsFromAppointment(AppointmentModel appointment) {
     geoPoint: direction.geoPoint,
     hospitalAddress: direction.hospitalAddress,
     eReceipt: eReceiptArgsFromAppointment(appointment),
+    isFromAppointment: true,
   );
 }
 

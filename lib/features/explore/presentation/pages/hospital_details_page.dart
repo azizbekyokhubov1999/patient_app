@@ -372,24 +372,6 @@ class _HeaderInfo extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.clock3,
-                size: 16,
-                color: AppColors.secondaryText,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '${hospital.distance} • ${hospital.eta}',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: AppColors.secondaryText,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -457,6 +439,7 @@ void _openGetDirection(BuildContext context, Hospital hospital) {
       hospitalName: hospital.name,
       geoPoint: hospital.geoPoint,
       hospitalAddress: hospital.address,
+      isFromAppointment: false,
     ),
   );
 }

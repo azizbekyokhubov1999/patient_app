@@ -40,6 +40,9 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
   final MapController _mapController = MapController();
   late final PageController _pageController;
   bool _didInitialFit = false;
+  bool _mapReady = false;
+  Hospital? _pendingHospitalMove;
+  ExploreState? _pendingFitState;
 
   @override
   void initState() {
@@ -56,29 +59,54 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
 
   void _fitMapToAll(ExploreState state) {
     if (state.hospitals.isEmpty) return;
+    if (!_mapReady) {
+      _pendingFitState = state;
+      return;
+    }
     final points = <LatLng>[
       LatLng(state.userLatitude, state.userLongitude),
       ...state.hospitals.map((h) => LatLng(h.latitude, h.longitude)),
     ];
     final bounds = LatLngBounds.fromPoints(points);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _mapController.fitCamera(
-        CameraFit.bounds(
-          bounds: bounds,
-          padding: const EdgeInsets.only(
-            left: 36,
-            right: 36,
-            top: 100,
-            bottom: 240,
-          ),
-          maxZoom: 15,
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.only(
+          left: 36,
+          right: 36,
+          top: 100,
+          bottom: 200,
         ),
-      );
-    });
+        maxZoom: 15,
+      ),
+    );
+  }
+
+  void _onMapReady() {
+    if (!mounted) return;
+    setState(() => _mapReady = true);
+
+    if (_pendingFitState != null) {
+      final state = _pendingFitState!;
+      _pendingFitState = null;
+      if (!_didInitialFit && state.hospitals.isNotEmpty) {
+        _didInitialFit = true;
+        _fitMapToAll(state);
+      }
+    }
+
+    if (_pendingHospitalMove != null) {
+      final hospital = _pendingHospitalMove!;
+      _pendingHospitalMove = null;
+      _animateMapToHospital(hospital);
+    }
   }
 
   void _animateMapToHospital(Hospital h) {
+    if (!_mapReady) {
+      _pendingHospitalMove = h;
+      return;
+    }
     _mapController.move(
       LatLng(h.latitude, h.longitude),
       _mapController.camera.zoom.clamp(12.0, 16.0),
@@ -86,6 +114,7 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
   }
 
   void _recenterOnUser(ExploreState state) {
+    if (!_mapReady) return;
     _mapController.move(
       LatLng(state.userLatitude, state.userLongitude),
       _kExploreMapZoom,
@@ -124,8 +153,10 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
           prev.searchQuery != curr.searchQuery,
       listener: (context, state) {
         if (state.hospitals.isNotEmpty && !_didInitialFit) {
-          _didInitialFit = true;
           _fitMapToAll(state);
+          if (_mapReady) {
+            _didInitialFit = true;
+          }
         }
         if (_pageController.hasClients && state.hospitals.isNotEmpty) {
           final index = state.selectedHospitalIndex.clamp(
@@ -147,6 +178,7 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
                 mapController: _mapController,
                 state: state,
                 onHospitalMarkerTap: _onHospitalMarkerTap,
+                onMapReady: _onMapReady,
               ),
               Positioned(
                 left: 20,
@@ -159,7 +191,7 @@ class _ExploreScaffoldState extends State<_ExploreScaffold> {
               ),
               Positioned(
                 right: 20,
-                bottom: 228,
+                bottom: 186,
                 child: _LocateFab(onPressed: () => _recenterOnUser(state)),
               ),
               Positioned(
@@ -194,11 +226,13 @@ class _ExploreMap extends StatelessWidget {
     required this.mapController,
     required this.state,
     required this.onHospitalMarkerTap,
+    required this.onMapReady,
   });
 
   final MapController mapController;
   final ExploreState state;
   final ValueChanged<int> onHospitalMarkerTap;
+  final VoidCallback onMapReady;
 
   @override
   Widget build(BuildContext context) {
@@ -211,6 +245,7 @@ class _ExploreMap extends StatelessWidget {
         initialZoom: _kExploreMapZoom,
         minZoom: 3,
         maxZoom: 18,
+        onMapReady: onMapReady,
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all,
         ),
@@ -229,21 +264,18 @@ class _ExploreMap extends StatelessWidget {
                   state.hospitals[i].latitude,
                   state.hospitals[i].longitude,
                 ),
-                width: 72,
-                height: 64,
+                width: 42,
+                height: 42,
                 alignment: Alignment.center,
                 child: _HospitalMapMarker(
-                  distanceLabel: state.hospitals[i].distance
-                      .toLowerCase()
-                      .replaceAll('miles', 'mi'),
                   selected: i == state.selectedHospitalIndex,
                   onTap: () => onHospitalMarkerTap(i),
                 ),
               ),
             Marker(
               point: userPoint,
-              width: 72,
-              height: 72,
+              width: 20,
+              height: 20,
               alignment: Alignment.center,
               rotate: true,
               child: const _UserLocationMarker(),
@@ -257,12 +289,10 @@ class _ExploreMap extends StatelessWidget {
 
 class _HospitalMapMarker extends StatelessWidget {
   const _HospitalMapMarker({
-    required this.distanceLabel,
     required this.selected,
     required this.onTap,
   });
 
-  final String distanceLabel;
   final bool selected;
   final VoidCallback onTap;
 
@@ -271,38 +301,24 @@ class _HospitalMapMarker extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.neutral200,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.primary,
-                width: selected ? 2.5 : 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryText.withValues(alpha: 0.08),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppColors.neutral200,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.primary,
+            width: selected ? 2.5 : 1.5,
           ),
-          const SizedBox(height: 4),
-          Text(
-            distanceLabel,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.primaryText,
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryText.withValues(alpha: 0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -311,40 +327,25 @@ class _HospitalMapMarker extends StatelessWidget {
 class _UserLocationMarker extends StatelessWidget {
   const _UserLocationMarker();
 
+  static const double _radius = 8.0;
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.18),
-            shape: BoxShape.circle,
+    return Container(
+      width: _radius * 2,
+      height: _radius * 2,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
-        ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: AppColors.primary,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x331360FA),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Icon(
-            LucideIcons.navigation,
-            color: AppColors.white,
-            size: 22,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -423,11 +424,11 @@ class _HospitalCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (hospitals.isEmpty) {
-      return const SizedBox(height: 210);
+      return const SizedBox(height: 168);
     }
 
     return SizedBox(
-      height: 210,
+      height: 168,
       child: PageView.builder(
         controller: pageController,
         itemCount: hospitals.length,
@@ -474,6 +475,7 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
         child: Stack(
           children: [
             Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
@@ -485,13 +487,12 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                         const ColoredBox(color: AppColors.neutral200),
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -561,50 +562,9 @@ class _HospitalExploreCardState extends State<_HospitalExploreCard> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              LucideIcons.clock,
-                              size: 14,
-                              color: AppColors.secondaryText,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${h.eta} • ${h.distance}',
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.primaryText,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ),
-                            Material(
-                              color: AppColors.primary,
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: () => context.push(
-                                  AppPaths.hospitalDetails,
-                                  extra: h,
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: Icon(
-                                    LucideIcons.navigation,
-                                    color: AppColors.white,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
-                ),
               ],
             ),
             Positioned(

@@ -33,6 +33,7 @@ class YouHaveArrivedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final isFromAppointment = args?.isFromAppointment ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -58,7 +59,9 @@ class YouHaveArrivedPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Please scan your E-Receipt QR code at the scanner machine.',
+                      isFromAppointment
+                          ? 'Please scan your E-Receipt QR code at the scanner machine.'
+                          : 'Thank you for using our app!',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.doctorMeta.copyWith(
                         fontSize: 16,
@@ -78,7 +81,9 @@ class YouHaveArrivedPage extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => _openEReceipt(context),
+                  onPressed: isFromAppointment
+                      ? () => _openEReceipt(context)
+                      : () => context.go(AppPaths.home),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,
@@ -88,8 +93,8 @@ class YouHaveArrivedPage extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Scan QR Code',
+                  child: Text(
+                    isFromAppointment ? 'Scan QR Code' : 'Back to Home',
                     style: AppTextStyles.buttonLabel,
                   ),
                 ),

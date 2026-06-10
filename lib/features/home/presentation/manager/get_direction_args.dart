@@ -10,6 +10,7 @@ class GetDirectionArgs {
     required this.geoPoint,
     this.hospitalAddress,
     this.eReceipt,
+    this.isFromAppointment = false,
   });
 
   final String hospitalId;
@@ -21,4 +22,7 @@ class GetDirectionArgs {
 
   /// E-Receipt shown after arrival (offline appointment flow).
   final EReceiptArgs? eReceipt;
+
+  /// When true, arrival screen shows Scan QR Code (appointment flow).
+  final bool isFromAppointment;
 }

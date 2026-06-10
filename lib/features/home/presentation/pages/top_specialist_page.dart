@@ -85,7 +85,7 @@ class _TopSpecialistPageState extends State<TopSpecialistPage> {
                     context.read<TopSpecialistCubit>().filterByQuery(v),
               )
             : Text(
-                'Top Specialist',
+                'Specialists',
                 style: theme.titleMedium?.copyWith(
                   color: const Color(0xFF1A1A2E),
                   fontWeight: FontWeight.w700,

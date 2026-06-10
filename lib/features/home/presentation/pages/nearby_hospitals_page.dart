@@ -95,7 +95,7 @@ class _NearbyHospitalsPageState extends State<NearbyHospitalsPage> {
                 ],
               )
             : Text(
-                'Nearby Hospitals',
+                'Hospitals',
                 style: theme.titleMedium?.copyWith(
                   color: AppColors.primaryText,
                   fontWeight: FontWeight.w700,
