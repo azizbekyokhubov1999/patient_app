@@ -50,6 +50,7 @@ class HospitalCard extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(

@@ -29,26 +29,45 @@ class GetDirection2Cubit extends Cubit<GetDirection2State> {
     try {
       _destination = normalizeHospitalGeoPoint(_args.geoPoint);
       final user = await _resolveInitialUserLocation(_destination);
-      final route = buildDemoRoutePoints(
-        geoToLatLng(user),
-        geoToLatLng(_destination),
-      );
-      _activeRoute = route;
-
-      final heading = route.length >= 2
-          ? bearingDegrees(route.first, route[1])
-          : null;
+      final start = geoToLatLng(user);
+      final end = geoToLatLng(_destination);
+      final straightLine = buildStraightLineRoute(start, end);
 
       emit(
         GetDirection2Loaded(
           args: _args,
           destination: _destination,
           userLocation: user,
-          routePoints: route,
+          routePoints: straightLine,
           status: GetDirection2NavigationStatus.idle,
-          userHeadingDegrees: heading,
+          userHeadingDegrees: bearingDegrees(start, end),
+          isFetchingRoute: true,
         ),
       );
+
+      List<LatLng> route;
+      var routeUsedFallback = false;
+      try {
+        route = await fetchRoute(start, end);
+      } catch (_) {
+        route = straightLine;
+        routeUsedFallback = true;
+      }
+      _activeRoute = route;
+
+      final current = state;
+      if (current is GetDirection2Loaded) {
+        emit(
+          current.copyWith(
+            routePoints: route,
+            isFetchingRoute: false,
+            routeUsedFallback: routeUsedFallback,
+            userHeadingDegrees: route.length >= 2
+                ? bearingDegrees(route.first, route[1])
+                : current.userHeadingDegrees,
+          ),
+        );
+      }
 
       await _startLocationUpdates();
     } catch (e) {

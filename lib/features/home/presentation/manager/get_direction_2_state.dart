@@ -25,6 +25,8 @@ final class GetDirection2Loaded extends GetDirection2State {
     required this.routePoints,
     required this.status,
     this.userHeadingDegrees,
+    this.isFetchingRoute = false,
+    this.routeUsedFallback = false,
   });
 
   final GetDirectionArgs args;
@@ -33,6 +35,8 @@ final class GetDirection2Loaded extends GetDirection2State {
   final List<LatLng> routePoints;
   final GetDirection2NavigationStatus status;
   final double? userHeadingDegrees;
+  final bool isFetchingRoute;
+  final bool routeUsedFallback;
 
   String get hospitalAddress =>
       args.hospitalAddress?.trim().isNotEmpty == true
@@ -47,6 +51,8 @@ final class GetDirection2Loaded extends GetDirection2State {
     List<LatLng>? routePoints,
     GetDirection2NavigationStatus? status,
     double? userHeadingDegrees,
+    bool? isFetchingRoute,
+    bool? routeUsedFallback,
   }) {
     return GetDirection2Loaded(
       args: args,
@@ -55,6 +61,8 @@ final class GetDirection2Loaded extends GetDirection2State {
       routePoints: routePoints ?? this.routePoints,
       status: status ?? this.status,
       userHeadingDegrees: userHeadingDegrees ?? this.userHeadingDegrees,
+      isFetchingRoute: isFetchingRoute ?? this.isFetchingRoute,
+      routeUsedFallback: routeUsedFallback ?? this.routeUsedFallback,
     );
   }
 }

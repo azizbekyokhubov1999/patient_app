@@ -168,18 +168,21 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 260,
+                        height: 200,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: state.hospitals.length,
                           separatorBuilder: (_, index) =>
                               const SizedBox(width: 14),
                           itemBuilder: (context, index) {
-                            return _HospitalCard(
-                              hospital: state.hospitals[index],
-                              onTap: () => context.push(
-                                AppPaths.hospitalDetails,
-                                extra: state.hospitals[index],
+                            return Align(
+                              alignment: Alignment.topCenter,
+                              child: _HospitalCard(
+                                hospital: state.hospitals[index],
+                                onTap: () => context.push(
+                                  AppPaths.hospitalDetails,
+                                  extra: state.hospitals[index],
+                                ),
                               ),
                             );
                           },
@@ -643,6 +646,7 @@ class _HospitalCardState extends State<_HospitalCard> {
           border: Border.all(color: AppColors.stroke),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(

@@ -66,7 +66,16 @@ class _GetDirection2PageState extends State<GetDirection2Page> {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return BlocConsumer<GetDirection2Cubit, GetDirection2State>(
-      listenWhen: (previous, current) => current is GetDirection2Arrived,
+      listenWhen: (previous, current) {
+        if (current is GetDirection2Arrived) return true;
+        if (current is GetDirection2Loaded &&
+            current.routeUsedFallback &&
+            previous is GetDirection2Loaded &&
+            !previous.routeUsedFallback) {
+          return true;
+        }
+        return false;
+      },
       listener: (context, state) {
         if (state is GetDirection2Arrived) {
           final arrivedPath =
@@ -74,6 +83,16 @@ class _GetDirection2PageState extends State<GetDirection2Page> {
                   ? AppPaths.appointmentYouHaveArrived
                   : AppPaths.youHaveArrived;
           context.push(arrivedPath, extra: state.args);
+          return;
+        }
+        if (state is GetDirection2Loaded && state.routeUsedFallback) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not load route. Showing direct path.',
+              ),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -152,6 +171,12 @@ class _LoadedBodyState extends State<_LoadedBody> {
   @override
   void didUpdateWidget(covariant _LoadedBody oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final routeUpdated = oldWidget.loaded.isFetchingRoute &&
+        !widget.loaded.isFetchingRoute;
+    if (routeUpdated) {
+      widget.onFitRoute();
+    }
+
     final userMoved = oldWidget.loaded.userLocation.latitude !=
             widget.loaded.userLocation.latitude ||
         oldWidget.loaded.userLocation.longitude !=
@@ -174,9 +199,11 @@ class _LoadedBodyState extends State<_LoadedBody> {
           mapController: widget.mapController,
           loaded: loaded,
         ),
+        if (loaded.isFetchingRoute)
+          const Center(child: CircularProgressIndicator()),
         Positioned(
           right: 16,
-          bottom: 200 + widget.bottomInset,
+          bottom: 248 + widget.bottomInset,
           child: Material(
             color: AppColors.white,
             shape: const CircleBorder(),
@@ -197,16 +224,11 @@ class _LoadedBodyState extends State<_LoadedBody> {
           ),
         ),
         Positioned(
-          left: 16,
-          right: 16,
-          bottom: 108 + widget.bottomInset,
-          child: _HospitalInfoCard(loaded: loaded),
-        ),
-        Positioned(
           left: 0,
           right: 0,
           bottom: 0,
           child: _BottomActions(
+            loaded: loaded,
             bottomInset: widget.bottomInset,
             isNavigating: loaded.isNavigating,
             onStart: widget.onStart,
@@ -403,71 +425,16 @@ class _PinTailPainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-class _HospitalInfoCard extends StatelessWidget {
-  const _HospitalInfoCard({required this.loaded});
-
-  final GetDirection2Loaded loaded;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 6,
-      shadowColor: Colors.black.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.white,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: AppColors.neutral200,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.mapPin,
-                size: 20,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    loaded.args.hospitalName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.titleMedium.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    loaded.hospitalAddress,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.doctorMeta.copyWith(fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _BottomActions extends StatelessWidget {
   const _BottomActions({
+    required this.loaded,
     required this.bottomInset,
     required this.isNavigating,
     required this.onStart,
     required this.onArrived,
   });
 
+  final GetDirection2Loaded loaded;
   final double bottomInset;
   final bool isNavigating;
   final VoidCallback onStart;
@@ -487,12 +454,55 @@ class _BottomActions extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 12 + bottomInset),
+      padding: EdgeInsets.fromLTRB(16, 20, 16, 24 + bottomInset),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: AppColors.neutral200,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.mapPin,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        loaded.args.hospitalName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            AppTextStyles.titleMedium.copyWith(fontSize: 16),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        loaded.hospitalAddress,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.doctorMeta.copyWith(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -517,7 +527,7 @@ class _BottomActions extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
